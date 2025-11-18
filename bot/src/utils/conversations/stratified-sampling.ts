@@ -1,5 +1,5 @@
-import type { Message, Conversation, ConversationWithMessages } from "./conversations";
-import { fetchLastNConversations, fetchLastNMessages } from "./conversation-fetching";
+import type { ConversationWithMessages } from "./base";
+import { fetchLastNConversations, fetchLastNMessages } from "./fetching";
 
 // ============================================================================
 // Types

@@ -1,26 +1,12 @@
-import { RateLimiterMemory } from "rate-limiter-flexible";
-import type { Message, Conversation, ConversationWithMessages } from "./conversations";
-import { fetchConversations, fetchMessages } from "./conversations";
+import type { Message, Conversation, ConversationWithMessages } from "./base";
+import { fetchConversations, fetchMessages } from "./base";
 
 // ============================================================================
-// Configuration
-// ============================================================================
-
-/**
- * Rate limiter instance - allows 500 requests per second by default
- * Adjust points and duration as needed for your API limits
- */
-const rateLimiter = new RateLimiterMemory({
-  points: 500, // Number of requests
-  duration: 1, // Per second
-});
-
-// ============================================================================
-// Rate-Limited Recursive Fetch Functions
+// Recursive Fetch Functions
 // ============================================================================
 
 /**
- * Recursively fetches the last N conversations with rate limiting
+ * Recursively fetches the last N conversations
  * @param n - The total number of conversations to fetch
  * @returns Array of conversations (newest first)
  */
@@ -34,10 +20,7 @@ export const fetchLastNConversations = async (n: number): Promise<Conversation[]
       return;
     }
 
-    // Apply rate limiting
-    await rateLimiter.consume("conversations", 1);
-
-    // Fetch the next batch of conversations
+    // Fetch the next batch of conversations (rate-limited in base.ts)
     const result = await fetchConversations(nextToken);
     conversations.push(...result.conversations);
 
@@ -63,7 +46,7 @@ export const fetchLastNConversations = async (n: number): Promise<Conversation[]
 };
 
 /**
- * Recursively fetches the last N messages from a conversation with rate limiting
+ * Recursively fetches the last N messages from a conversation
  * @param conversationId - The conversation ID to fetch messages from
  * @param n - The total number of messages to fetch
  * @returns Array of messages (newest first)
@@ -78,10 +61,7 @@ export const fetchLastNMessages = async (conversationId: string, n: number): Pro
       return;
     }
 
-    // Apply rate limiting
-    await rateLimiter.consume(conversationId, 1);
-
-    // Fetch the next batch of messages
+    // Fetch the next batch of messages (rate-limited in base.ts)
     const result = await fetchMessages(conversationId, nextToken);
     messages.push(...result.messages);
 

@@ -1,5 +1,5 @@
 import { Workflow, z } from "@botpress/runtime";
-import { stratifiedSampleConversations } from "../utils/stratified-sampling";
+import { stratifiedSampleConversations } from "../utils/conversations";
 
 /**
  * Phase 2: Sampling
@@ -23,8 +23,6 @@ export const GenerateConversationSummaries = new Workflow({
       .describe("Maximum messages to fetch per conversation"),
   }),
   output: z.object({
-    conversationIds: z.array(z.string()),
-    conversations_fetched: z.number(),
     stratification: z.object({
       total_fetched: z.number(),
       total_sampled: z.number(),
@@ -40,6 +38,8 @@ export const GenerateConversationSummaries = new Workflow({
         })
       ),
     }),
+    conversationIds: z.array(z.string()),
+    conversations_fetched: z.number(),
   }),
   handler: async ({ input, step }) => {
     // Step 2: Fetch conversations with messages using stratified sampling
@@ -56,9 +56,9 @@ export const GenerateConversationSummaries = new Workflow({
     const stratificationInfo = samplingResult.stratification;
 
     return {
+      stratification: stratificationInfo,
       conversationIds: conversationsWithMessages.map((c) => c.conversation.id),
       conversations_fetched: conversationsWithMessages.length,
-      stratification: stratificationInfo,
     };
   },
 });

@@ -1,7 +1,6 @@
-import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import {
   Sheet,
   SheetClose,
@@ -11,20 +10,13 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, AlertCircle } from "lucide-react";
 import { step1GenerateConfig } from "@/services/insights";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { AlertCircle, Loader2 } from "lucide-react";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import * as z from "zod";
 
 const formSchema = z.object({
   agent_description: z
@@ -35,10 +27,6 @@ const formSchema = z.object({
     .string()
     .min(10, "Analytical question must be at least 10 characters")
     .max(500, "Analytical question must be less than 500 characters"),
-  trace_structure: z
-    .string()
-    .min(10, "Trace structure must be at least 10 characters")
-    .max(500, "Trace structure must be less than 500 characters"),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -49,11 +37,7 @@ interface CreateInsightSheetProps {
   onSuccess: () => void;
 }
 
-export function CreateInsightSheet({
-  open,
-  onOpenChange,
-  onSuccess,
-}: CreateInsightSheetProps) {
+export function CreateInsightSheet({ open, onOpenChange, onSuccess }: CreateInsightSheetProps) {
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -62,7 +46,6 @@ export function CreateInsightSheet({
     defaultValues: {
       agent_description: "",
       analytical_question: "",
-      trace_structure: "",
     },
   });
 
@@ -82,7 +65,6 @@ export function CreateInsightSheet({
       await step1GenerateConfig({
         agent_description: data.agent_description,
         analytical_question: data.analytical_question,
-        trace_structure: data.trace_structure,
       });
 
       // Success!
@@ -101,9 +83,7 @@ export function CreateInsightSheet({
       <SheetContent>
         <SheetHeader>
           <SheetTitle>Create New Insight</SheetTitle>
-          <SheetDescription>
-            Configure your analysis parameters to generate an insight configuration.
-          </SheetDescription>
+          <SheetDescription>Configure your analysis parameters to generate an insight configuration.</SheetDescription>
         </SheetHeader>
 
         {error && (
@@ -129,9 +109,7 @@ export function CreateInsightSheet({
                         {...field}
                       />
                     </FormControl>
-                    <FormDescription>
-                      What insights do you want to discover from your conversations?
-                    </FormDescription>
+                    <FormDescription>What insights do you want to discover from your conversations?</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -150,30 +128,7 @@ export function CreateInsightSheet({
                         {...field}
                       />
                     </FormControl>
-                    <FormDescription>
-                      Describe what your bot does and how it helps users
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="trace_structure"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Conversation Patterns</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="e.g., Simple queries are 2-5 messages, complex troubleshooting runs 10-20+ messages..."
-                        disabled={isCreating}
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      Describe typical conversation lengths and patterns
-                    </FormDescription>
+                    <FormDescription>Describe what your bot does and how it helps users</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

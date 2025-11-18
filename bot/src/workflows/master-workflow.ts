@@ -28,7 +28,7 @@ export const MasterWorkflow = new Workflow({
   }),
   handler: async ({ input, step }) => {
     // Phase 1: Sample conversations
-    const phase1Id = await step("start-conversation-sampling", async () => {
+    const phase1Id = await step("sample-conversations", async () => {
       const { id } = await SampleConversationsWorkflow.getOrCreate({
         input: {
           maxConversations: input.maxConversations,

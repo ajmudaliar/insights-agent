@@ -8,7 +8,6 @@ export type InsightsConfig = {
   key: string; // This is the configId (e.g., "cfg_1763068133453_kf7c7")
   agent_description: string;
   analytical_question: string;
-  trace_structure: string;
   created_at: string;
   createdAt: string;
   updatedAt: string;
@@ -166,7 +165,6 @@ export type CreateInsightInput = {
   // Phase 1 inputs
   agent_description: string;
   analytical_question: string;
-  trace_structure: string;
   // Phase 2 params
   maxConversations: number;
   maxMessagesPerConversation: number;

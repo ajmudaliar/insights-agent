@@ -14,28 +14,16 @@ export const GenerateInsightsConfig = new Workflow({
   input: z.object({
     agent_description: z.string().describe("Description of what the target bot does"),
     analytical_question: z.string().describe("What insights you want to discover (e.g., 'Why are users frustrated?')"),
-    trace_structure: z
-      .string()
-      .describe("How conversations are structured (e.g., 'User asks question, bot responds with answer')"),
   }),
   output: z.object({
-    success: z.boolean(),
     configId: z.string(),
     config: z.object({
-      analysis_mode: z.string(),
       summary_prompt: z.string(),
       attributes: z.array(z.any()),
-      feature_weights: z.object({
-        semantic: z.number(),
-        behavioral: z.number(),
-      }),
       clustering_focus: z.string(),
     }),
-    execution_time_ms: z.number(),
   }),
   handler: async ({ input, step }) => {
-    const startTime = Date.now();
-
     const config = await step("generate-config", async () => {
       // Prepare the input text for extraction
       const inputText = `You are analyzing a conversational bot to generate insights. Based on the following information, create a structured configuration for analysis:
@@ -44,17 +32,10 @@ export const GenerateInsightsConfig = new Workflow({
 
 **Analytical Question:** ${input.analytical_question}
 
-**Conversation Structure:** ${input.trace_structure}
-
 Generate a comprehensive configuration that will help answer the analytical question.`;
 
       // Define the schema for extraction
       const configSchema = z.object({
-        analysis_mode: z
-          .enum(["usage_patterns", "failure_modes"])
-          .describe(
-            "If the question focuses on how users interact, behavior patterns, or feature usage, choose 'usage_patterns'. If it focuses on errors, failures, or problems, choose 'failure_modes'"
-          ),
         summary_prompt: z
           .string()
           .describe(
@@ -75,24 +56,6 @@ Generate a comprehensive configuration that will help answer the analytical ques
           .describe(
             "List of 3-5 attributes to extract from conversations that will help answer the analytical question"
           ),
-        feature_weights: z
-          .object({
-            semantic: z
-              .number()
-              .min(0)
-              .max(1)
-              .describe(
-                "Weight for semantic/content features (0-1). Use higher values (0.7-0.8) for usage patterns, lower (0.2-0.3) for failure modes"
-              ),
-            behavioral: z
-              .number()
-              .min(0)
-              .max(1)
-              .describe(
-                "Weight for behavioral/metric features (0-1). Use lower values (0.2-0.3) for usage patterns, higher (0.7-0.8) for failure modes"
-              ),
-          })
-          .describe("Weights should sum to approximately 1.0"),
         clustering_focus: z
           .string()
           .describe(
@@ -101,7 +64,7 @@ Generate a comprehensive configuration that will help answer the analytical ques
       });
 
       // Use adk.zai.extract with correct signature: extract(input, schema, options?)
-      const output = await adk.zai.with({modelId: 'best'}).extract(inputText, configSchema);
+      const output = await adk.zai.with({ modelId: "best" }).extract(inputText, configSchema);
 
       return output;
     });
@@ -114,14 +77,11 @@ Generate a comprehensive configuration that will help answer the analytical ques
         rows: [
           {
             key: configId,
-            analysis_mode: config.analysis_mode,
             summary_prompt: config.summary_prompt,
             attributes: config.attributes,
-            feature_weights: config.feature_weights,
             clustering_focus: config.clustering_focus,
             agent_description: input.agent_description,
             analytical_question: input.analytical_question,
-            trace_structure: input.trace_structure,
             created_at: createdAt,
           },
         ],
@@ -131,19 +91,13 @@ Generate a comprehensive configuration that will help answer the analytical ques
       return configId;
     });
 
-    const executionTime = Date.now() - startTime;
-
     return {
-      success: true,
       configId,
       config: {
-        analysis_mode: config.analysis_mode,
         summary_prompt: config.summary_prompt,
         attributes: config.attributes,
-        feature_weights: config.feature_weights,
         clustering_focus: config.clustering_focus,
       },
-      execution_time_ms: executionTime,
     };
   },
 });

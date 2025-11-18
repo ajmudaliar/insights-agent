@@ -174,7 +174,6 @@ export async function getSubcategories(configId: string): Promise<Subcategory[]>
 export async function step1GenerateConfig(input: {
   agent_description: string;
   analytical_question: string;
-  trace_structure: string;
 }): Promise<Step1Output> {
   try {
     // Trigger the workflow
@@ -317,7 +316,6 @@ export async function createAndRunInsight(
     const step1Result = await step1GenerateConfig({
       agent_description: input.agent_description,
       analytical_question: input.analytical_question,
-      trace_structure: input.trace_structure,
     });
 
     const configId = step1Result.configId;

@@ -7,7 +7,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import type { InsightsConfig } from "@/types/insights";
-import { Calendar, Hash, FileText, Activity, Settings2, Target, ChevronDown, Filter } from "lucide-react";
+import { Calendar, Hash, FileText, Activity, Settings2, ChevronDown, Filter } from "lucide-react";
 import { InsightReportSheet } from "./insight-report-sheet";
 
 interface InsightDetailHeaderProps {
@@ -128,19 +128,6 @@ export function InsightDetailHeader({ config }: InsightDetailHeaderProps) {
           </CollapsibleTrigger>
 
           <CollapsibleContent className="space-y-4 pt-2">
-            {/* Trace Structure */}
-            {config.trace_structure && (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-                  <Target className="h-3 w-3" />
-                  <span>Trace Structure</span>
-                </div>
-                <p className="text-xs text-muted-foreground/70 font-mono pl-5">
-                  {config.trace_structure}
-                </p>
-              </div>
-            )}
-
             {/* Summary Prompt */}
             {config.summary_prompt && (
               <div className="space-y-2">

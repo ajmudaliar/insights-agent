@@ -1,4 +1,18 @@
-import { getTargetBotClient } from "./target-client";
+import { getTargetBotClient } from "../target-client";
+import { RateLimiterMemory } from "rate-limiter-flexible";
+
+// ============================================================================
+// Configuration
+// ============================================================================
+
+/**
+ * Rate limiter instance - allows 500 requests per second by default
+ * Adjust points and duration as needed for your API limits
+ */
+const rateLimiter = new RateLimiterMemory({
+  points: 500, // Number of requests
+  duration: 1, // Per second
+});
 
 // ============================================================================
 // Types
@@ -44,6 +58,8 @@ export type ConversationWithMessages = {
 // ============================================================================
 
 export const fetchConversations = async (nextToken?: string) => {
+  await rateLimiter.consume("conversations", 1);
+
   const client = getTargetBotClient();
   const result = await client.listConversations({
     nextToken: nextToken,
@@ -57,6 +73,8 @@ export const fetchConversations = async (nextToken?: string) => {
 };
 
 export const fetchConversationById = async (conversationId: string) => {
+  await rateLimiter.consume("conversation-by-id", 1);
+
   const client = getTargetBotClient();
   const result = await client.getConversation({ id: conversationId });
 
@@ -64,6 +82,8 @@ export const fetchConversationById = async (conversationId: string) => {
 };
 
 export const fetchMessages = async (conversationId: string, nextToken?: string) => {
+  await rateLimiter.consume(conversationId, 1);
+
   const client = getTargetBotClient();
   const result = await client.listMessages({
     conversationId,

@@ -206,7 +206,6 @@ Use `client.getOrCreateWorkflow()` to trigger workflows and poll for completion:
 export async function generateConfig(input: {
   agent_description: string;
   analytical_question: string;
-  trace_structure: string;
 }): Promise<{ configId: string }> {
   // Trigger the workflow
   let { workflow } = await client.getOrCreateWorkflow({
@@ -269,7 +268,6 @@ export type InsightsConfig = {
   configId: string;
   agent_description: string;
   analytical_question: string;
-  trace_structure: string;
   created_at: string;
 };
 
@@ -285,7 +283,6 @@ export async function listConfigs(): Promise<InsightsConfig[]> {
 export async function generateConfig(input: {
   agent_description: string;
   analytical_question: string;
-  trace_structure: string;
 }): Promise<{ configId: string }> {
   let { workflow } = await client.getOrCreateWorkflow({
     name: "step1_generate_config",
