@@ -174,7 +174,7 @@ export function CategoriesView({ configId }: CategoriesViewProps) {
                   {/* Bar Chart + Stats */}
                   <div className="shrink-0 flex items-center gap-3 w-80">
                     {/* Bar */}
-                    <div className="w-40 h-6 bg-muted/30 rounded-sm overflow-hidden">
+                    <div className="w-40 h-6 bg-muted/50 rounded-sm overflow-hidden">
                       <div
                         className="h-full transition-all duration-300"
                         style={{
@@ -200,8 +200,8 @@ export function CategoriesView({ configId }: CategoriesViewProps) {
               {/* Subcategories */}
               {expandedCategories.has(category.key) &&
                 category.subcategories.map((subcategory) => {
-                  // Subcategory frequency_pct is absolute (% of category), need relative to parent category
-                  const relativePercentage = (subcategory.frequency_pct / 100) * category.frequency_pct;
+                  // Calculate relative percentage to total conversations
+                  const relativePercentage = (subcategory.frequency_pct * category.frequency_pct) / 100;
 
                   return (
                     <div
@@ -231,7 +231,7 @@ export function CategoriesView({ configId }: CategoriesViewProps) {
                         {/* Bar Chart + Stats */}
                         <div className="shrink-0 flex items-center gap-3 w-80">
                           {/* Bar */}
-                          <div className="w-40 h-6 bg-muted/30 rounded-sm overflow-hidden">
+                          <div className="w-40 h-6 bg-muted/50 rounded-sm overflow-hidden">
                             <div
                               className="h-full transition-all duration-300"
                               style={{
@@ -248,7 +248,7 @@ export function CategoriesView({ configId }: CategoriesViewProps) {
 
                           {/* Percentage */}
                           <span className="text-xs font-medium tabular-nums w-12 text-right">
-                            {subcategory.frequency_pct.toFixed(1)}%
+                            {relativePercentage.toFixed(1)}%
                           </span>
                         </div>
                       </div>
