@@ -9,11 +9,10 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { CircleUser } from "lucide-react";
-import { Link, useLocation, useParams } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 
 export function AppHeader() {
   const location = useLocation();
-  const { configId } = useParams();
 
   const getBreadcrumbs = () => {
     const path = location.pathname;

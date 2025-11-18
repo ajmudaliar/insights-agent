@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Sheet,
   SheetContent,
@@ -7,17 +7,15 @@ import {
 } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import { ConversationCard } from "@/components/conversation-card";
-import { getConversationsForCategory } from "@/services/insights";
-import type { Category, Subcategory, ConversationWithCategory } from "@/types/insights";
-import { X } from "lucide-react";
+import type { Topic, Subtopic } from "@/types/insights";
+import { X, ChevronRight } from "lucide-react";
+import { ConversationDetail } from "@/components/conversation-detail";
 
 interface CategoryDetailSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  category: Category | null;
-  subcategory?: Subcategory | null;
+  category: Topic | null;
+  subcategory?: Subtopic | null;
 }
 
 export function CategoryDetailSheet({
@@ -27,41 +25,8 @@ export function CategoryDetailSheet({
   subcategory,
 }: CategoryDetailSheetProps) {
   const item = subcategory || category;
-  const isSubcategory = !!subcategory;
-  
-  const [conversations, setConversations] = useState<ConversationWithCategory[]>([]);
-  const [isLoadingConversations, setIsLoadingConversations] = useState(false);
-  const [conversationsError, setConversationsError] = useState<string | null>(null);
-
-  // Fetch conversations when category/subcategory changes
-  useEffect(() => {
-    const loadConversations = async () => {
-      if (!category || !open) {
-        setConversations([]);
-        return;
-      }
-
-      try {
-        setIsLoadingConversations(true);
-        setConversationsError(null);
-
-        const data = await getConversationsForCategory(
-          category.configId,
-          category.key,
-          subcategory?.key
-        );
-        
-        setConversations(data);
-      } catch (err) {
-        console.error("Failed to load conversations:", err);
-        setConversationsError("Failed to load conversations");
-      } finally {
-        setIsLoadingConversations(false);
-      }
-    };
-
-    loadConversations();
-  }, [category, subcategory, open]);
+  const isSubtopic = !!subcategory;
+  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
 
   if (!item) return null;
 
@@ -77,6 +42,39 @@ export function CategoryDetailSheet({
     });
   };
 
+  // Show conversation detail view if a conversation is selected
+  if (selectedConversationId) {
+    return (
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent className="w-[625px] sm:max-w-[625px] p-0">
+          <div className="border-b px-6 py-4 flex items-center justify-between">
+            <SheetHeader className="flex-1">
+              <SheetTitle className="text-lg font-semibold text-left">
+                Conversation
+              </SheetTitle>
+            </SheetHeader>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onOpenChange(false)}
+              className="h-8 w-8 p-0"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+
+          <div className="px-6 py-6 overflow-y-auto max-h-[calc(100vh-80px)]">
+            <ConversationDetail
+              conversationId={selectedConversationId}
+              onBack={() => setSelectedConversationId(null)}
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
+    );
+  }
+
+  // Show topic/subtopic detail view
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-[625px] sm:max-w-[625px] p-0">
@@ -85,7 +83,7 @@ export function CategoryDetailSheet({
           <SheetHeader className="flex-1">
             <div className="flex items-center gap-2 mb-1">
               <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
-                {isSubcategory ? "Subcategory" : "Category"}
+                {isSubtopic ? "Subtopic" : "Topic"}
               </Badge>
             </div>
             <SheetTitle className="text-lg font-semibold text-left">
@@ -128,60 +126,36 @@ export function CategoryDetailSheet({
             </div>
           </div>
 
-          {/* Category Type */}
-          {item.category_type && (
-            <div className="space-y-2">
-              <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Category Type
-              </h3>
-              <Badge variant="outline" className="text-xs">
-                {item.category_type}
-              </Badge>
-            </div>
-          )}
-
-          {/* Conversations Section */}
+          {/* Conversations List */}
           <div className="space-y-3">
             <div className="flex items-baseline gap-2">
               <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                 Conversations
               </h3>
               <span className="text-xs text-muted-foreground">
-                {isLoadingConversations ? "..." : conversations.length}
+                {item.conversationIds.length}
               </span>
             </div>
 
-            {/* Loading State */}
-            {isLoadingConversations && (
-              <div className="space-y-2">
-                {[...Array(3)].map((_, i) => (
-                  <Skeleton key={i} className="h-24 w-full rounded-md" />
-                ))}
-              </div>
-            )}
-
-            {/* Error State */}
-            {!isLoadingConversations && conversationsError && (
-              <p className="text-sm text-destructive">{conversationsError}</p>
-            )}
-
-            {/* Empty State */}
-            {!isLoadingConversations && !conversationsError && conversations.length === 0 && (
+            {item.conversationIds.length === 0 ? (
               <div className="py-8 text-center">
                 <p className="text-sm text-muted-foreground">
-                  No conversations found for this {isSubcategory ? 'subcategory' : 'category'}
+                  No conversations found for this {isSubtopic ? "subtopic" : "topic"}
                 </p>
               </div>
-            )}
-
-            {/* Conversations List */}
-            {!isLoadingConversations && !conversationsError && conversations.length > 0 && (
-              <div className="space-y-2">
-                {conversations.map((conversation) => (
-                  <ConversationCard
-                    key={conversation.conversationId}
-                    conversation={conversation}
-                  />
+            ) : (
+              <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                {item.conversationIds.map((convId) => (
+                  <button
+                    key={convId}
+                    onClick={() => setSelectedConversationId(convId)}
+                    className="w-full px-3 py-2.5 bg-muted/30 hover:bg-muted/50 rounded text-left flex items-center justify-between group transition-colors"
+                  >
+                    <span className="text-xs font-mono text-muted-foreground group-hover:text-foreground">
+                      {convId}
+                    </span>
+                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 group-hover:text-foreground transition-colors" />
+                  </button>
                 ))}
               </div>
             )}
@@ -195,14 +169,16 @@ export function CategoryDetailSheet({
             </div>
 
             <div className="flex justify-between items-center">
-              <span className="text-xs text-muted-foreground">Category Index</span>
-              <span className="text-xs font-mono">{item.categoryIndex}</span>
+              <span className="text-xs text-muted-foreground">
+                {isSubtopic ? "Topic" : "Topic"} Index
+              </span>
+              <span className="text-xs font-mono">{item.topicIndex}</span>
             </div>
-            
-            {isSubcategory && subcategory && (
+
+            {isSubtopic && subcategory && (
               <div className="flex justify-between items-center">
-                <span className="text-xs text-muted-foreground">Subcategory Index</span>
-                <span className="text-xs font-mono">{subcategory.subcategoryIndex}</span>
+                <span className="text-xs text-muted-foreground">Subtopic Index</span>
+                <span className="text-xs font-mono">{subcategory.subtopicIndex}</span>
               </div>
             )}
 
@@ -212,11 +188,11 @@ export function CategoryDetailSheet({
             </div>
           </div>
 
-          {/* Parent Category (for subcategories) */}
-          {isSubcategory && category && (
+          {/* Parent Topic (for subtopics) */}
+          {isSubtopic && category && (
             <div className="pt-4 border-t space-y-2">
               <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Parent Category
+                Parent Topic
               </h3>
               <div className="rounded-md bg-muted/30 p-3">
                 <p className="text-sm font-medium">{category.name}</p>
@@ -231,4 +207,3 @@ export function CategoryDetailSheet({
     </Sheet>
   );
 }
-

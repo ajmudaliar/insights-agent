@@ -11,7 +11,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
-import { step1GenerateConfig } from "@/services/insights";
+import { createInsight } from "@/services/insights";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { useState } from "react";
@@ -62,7 +62,7 @@ export function CreateInsightSheet({ open, onOpenChange, onSuccess }: CreateInsi
     setError(null);
 
     try {
-      await step1GenerateConfig({
+      await createInsight({
         agent_description: data.agent_description,
         analytical_question: data.analytical_question,
       });

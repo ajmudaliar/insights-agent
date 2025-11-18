@@ -30,3 +30,29 @@ export function getBotpressClient({
     botId,
   });
 }
+
+/**
+ * Get the Target Bot API client (for viewing conversations)
+ */
+export function getTargetBotClient({
+  botId,
+  workspaceId,
+}: {
+  botId?: string;
+  workspaceId?: string;
+}) {
+  const pat = import.meta.env.VITE_BOTPRESS_PAT;
+
+  if (!pat) {
+    throw new Error(
+      "VITE_BOTPRESS_PAT not set. Please add it to your .env file."
+    );
+  }
+
+  return new Client({
+    apiUrl: API_BASE_URL,
+    token: pat,
+    workspaceId,
+    botId,
+  });
+}

@@ -7,15 +7,13 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import type { InsightsConfig } from "@/types/insights";
-import { Calendar, Hash, FileText, Activity, Settings2, ChevronDown, Filter } from "lucide-react";
-import { InsightReportSheet } from "./insight-report-sheet";
+import { Calendar, Hash, Activity, Settings2, ChevronDown, Filter } from "lucide-react";
 
 interface InsightDetailHeaderProps {
   config: InsightsConfig;
 }
 
 export function InsightDetailHeader({ config }: InsightDetailHeaderProps) {
-  const [isReportSheetOpen, setIsReportSheetOpen] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
   const formatDate = (dateString: string) => {
@@ -43,27 +41,15 @@ export function InsightDetailHeader({ config }: InsightDetailHeaderProps) {
   return (
     <>
       <div className="space-y-5">
-        {/* Header with button */}
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1 space-y-3">
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-              {config.analytical_question}
-            </h1>
+        {/* Header */}
+        <div className="flex-1 space-y-3">
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+            {config.analytical_question}
+          </h1>
 
-            <p className="text-sm text-muted-foreground/80 leading-relaxed">
-              {config.agent_description}
-            </p>
-          </div>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsReportSheetOpen(true)}
-            className="gap-2 shrink-0"
-          >
-            <FileText className="h-4 w-4" />
-            Show Report
-          </Button>
+          <p className="text-sm text-muted-foreground/80 leading-relaxed">
+            {config.agent_description}
+          </p>
         </div>
 
         {/* Primary metadata row */}
@@ -79,18 +65,6 @@ export function InsightDetailHeader({ config }: InsightDetailHeaderProps) {
             <Hash className="h-3 w-3" />
             <span className="font-mono">{config.key.split("_")[1]}</span>
           </div>
-
-          {config.analysis_mode && (
-            <>
-              <div className="h-3 w-px bg-border" />
-              <Badge
-                variant="secondary"
-                className="h-5 text-[10px] px-1.5 py-0 font-medium"
-              >
-                {config.analysis_mode}
-              </Badge>
-            </>
-          )}
 
           {hasFilterableAttributes && (
             <>
@@ -154,6 +128,27 @@ export function InsightDetailHeader({ config }: InsightDetailHeaderProps) {
               </div>
             )}
 
+            {/* Extract Features */}
+            {config.extract_features && config.extract_features.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                  <Settings2 className="h-3 w-3" />
+                  <span>Extract Features ({config.extract_features.length})</span>
+                </div>
+                <div className="pl-5 flex flex-wrap gap-2">
+                  {config.extract_features.map((feature, idx) => (
+                    <Badge
+                      key={idx}
+                      variant="outline"
+                      className="h-5 text-[10px] px-2 py-0"
+                    >
+                      {feature}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Attributes */}
             {config.attributes && config.attributes.length > 0 && (
               <div className="space-y-2">
@@ -192,27 +187,6 @@ export function InsightDetailHeader({ config }: InsightDetailHeaderProps) {
               </div>
             )}
 
-            {/* Feature Weights */}
-            {config.feature_weights && Object.keys(config.feature_weights).length > 0 && (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-                  <Settings2 className="h-3 w-3" />
-                  <span>Feature Weights</span>
-                </div>
-                <div className="pl-5 flex flex-wrap gap-2">
-                  {Object.entries(config.feature_weights).map(([key, value]) => (
-                    <div
-                      key={key}
-                      className="flex items-center gap-1.5 text-xs"
-                    >
-                      <span className="text-muted-foreground/90">{key}:</span>
-                      <span className="font-mono text-foreground/90">{value}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
             {/* Timestamps */}
             <div className="pt-2 border-t space-y-1">
               <div className="flex items-center gap-4 text-[11px] text-muted-foreground/60">
@@ -224,13 +198,6 @@ export function InsightDetailHeader({ config }: InsightDetailHeaderProps) {
           </CollapsibleContent>
         </Collapsible>
       </div>
-
-      {/* Report Sheet */}
-      <InsightReportSheet
-        open={isReportSheetOpen}
-        onOpenChange={setIsReportSheetOpen}
-        configId={config.key}
-      />
     </>
   );
 }
