@@ -28,6 +28,7 @@ export const ClusteringResultsTable = new Table({
       total_clusters: z.number(),
       avg_cluster_size: z.number(),
     }).describe("Summary statistics"),
+    similarity_matrix: z.array(z.array(z.number())).describe("Pairwise similarity matrix between conversations"),
     created_at: z.string().describe("ISO timestamp when clustering was performed"),
   },
   factor: 10,

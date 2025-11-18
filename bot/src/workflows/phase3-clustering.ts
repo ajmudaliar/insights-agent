@@ -6,7 +6,7 @@ import { fetchLastNMessages } from "../utils/conversations/fetching";
 import { generateTranscript } from "../utils/transcript";
 
 // Clustering service URL (Python FastAPI service)
-const CLUSTERING_SERVICE_URL = process.env.CLUSTERING_SERVICE_URL || "https://248db72d3b4f.ngrok.app";
+const CLUSTERING_SERVICE_URL = process.env.CLUSTERING_SERVICE_URL || "https://e4bf32d01578.ngrok.app";
 
 // Type definitions for clustering service response
 interface ClusteringResult {
@@ -34,9 +34,9 @@ interface ClusteringResult {
 
 // Hardcoded weights for usage pattern analysis
 const EMBEDDING_WEIGHTS = {
-  semantic: 0.65,    // intent + specific_features + topics
-  attributes: 0.25,  // user-defined attributes
-  outcome: 0.10      // conversation outcome
+  semantic: 0.65, // intent + specific_features + topics
+  attributes: 0.25, // user-defined attributes
+  outcome: 0.1, // conversation outcome
 };
 
 export const ClusterConversations = new Workflow({
@@ -47,12 +47,17 @@ export const ClusterConversations = new Workflow({
     configId: z.string().describe("Config ID to cluster conversations for"),
     numHighLevelClusters: z.number().optional().default(5).describe("Number of high-level clusters"),
     numSubclustersPerCluster: z.number().optional().default(3).describe("Number of subclusters per high-level cluster"),
-    maxMessagesForLabeling: z.number().optional().default(50).describe("Max messages to fetch per conversation for labeling"),
+    maxMessagesForLabeling: z
+      .number()
+      .optional()
+      .default(50)
+      .describe("Max messages to fetch per conversation for labeling"),
   }),
   output: z.object({
     total_conversations: z.number(),
     total_clusters: z.number(),
     clustering_id: z.string().describe("ID of saved clustering result"),
+    save_result: z.any(),
   }),
   handler: async ({ input, step }) => {
     // Step 1: Load all conversation features for this config from the table
@@ -102,7 +107,7 @@ export const ClusterConversations = new Workflow({
         throw new Error(`Clustering service failed: ${error}`);
       }
 
-      return await response.json() as ClusteringResult;
+      return (await response.json()) as ClusteringResult;
     });
 
     // Step 3: Load config for labeling context
@@ -131,17 +136,19 @@ export const ClusterConversations = new Workflow({
         const sampleIndices = Array.from({ length: sampleSize }, (_, i) =>
           Math.floor((i * conversationIds.length) / sampleSize)
         );
-        const representativeIds = sampleIndices.map(i => conversationIds[i]);
+        const representativeIds = sampleIndices.map((i) => conversationIds[i]);
 
         // Get representative conversations
-        const representatives = features.filter(f => representativeIds.includes(f.key));
+        const representatives = features.filter((f) => representativeIds.includes(f.key));
 
         // Fetch messages and generate transcripts for representative conversations
         const transcripts = await Promise.all(
           representatives.map(async (conv, idx) => {
             const messages = await fetchLastNMessages(conv.key, input.maxMessagesForLabeling);
             const transcript = generateTranscript(messages);
-            return `Conversation ${idx + 1} (${conv.key}):\n${transcript}\n\nIntent: ${conv.primary_user_intent}\nOutcome: ${conv.conversation_outcome}`;
+            return `Conversation ${idx + 1} (${conv.key}):\n${transcript}\n\nIntent: ${
+              conv.primary_user_intent
+            }\nOutcome: ${conv.conversation_outcome}`;
           })
         );
 
@@ -176,8 +183,8 @@ Generate a category for this cluster.`,
           const subSampleIndices = Array.from({ length: subSampleSize }, (_, i) =>
             Math.floor((i * subConvIds.length) / subSampleSize)
           );
-          const subRepIds = subSampleIndices.map(i => subConvIds[i]);
-          const subReps = features.filter(f => subRepIds.includes(f.key));
+          const subRepIds = subSampleIndices.map((i) => subConvIds[i]);
+          const subReps = features.filter((f) => subRepIds.includes(f.key));
 
           // Fetch messages and generate transcripts for subcluster representatives
           const subTranscripts = await Promise.all(
@@ -216,7 +223,8 @@ Generate a more specific subcategory name and description.`,
             member_count: conversationIds.length,
           },
         };
-      }
+      },
+      { concurrency: 10, maxAttempts: 2 }
     );
 
     // Build taxonomy object
@@ -226,11 +234,11 @@ Generate a more specific subcategory name and description.`,
     }, {} as Record<string, any>);
 
     // Step 5: Save clustering results with labels
-    const clusteringId = await step("save-results", async () => {
+    const {id: clusteringId, save_result} = await step("save-results", async () => {
       const id = `clustering_${Date.now()}_${Math.random().toString(36).substring(7)}`;
       const createdAt = new Date().toISOString();
 
-      await ClusteringResultsTable.upsertRows({
+      const save_result = await ClusteringResultsTable.upsertRows({
         rows: [
           {
             key: id,
@@ -239,19 +247,24 @@ Generate a more specific subcategory name and description.`,
             subclusters: clusteringResult.subclusters,
             taxonomy: taxonomyObject,
             cluster_stats: clusteringResult.cluster_stats,
+            similarity_matrix: clusteringResult.similarity_matrix,
             created_at: createdAt,
           },
         ],
         keyColumn: "key",
       });
 
-      return id;
+      return {
+        id,
+        save_result,
+      };
     });
 
     return {
       total_conversations: features.length,
       total_clusters: clusteringResult.cluster_stats.total_clusters,
       clustering_id: clusteringId,
+      save_result
     };
   },
 });
