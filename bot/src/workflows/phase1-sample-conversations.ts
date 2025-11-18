@@ -39,7 +39,6 @@ export const GenerateConversationSummaries = new Workflow({
       ),
     }),
     conversationIds: z.array(z.string()),
-    conversations_fetched: z.number(),
   }),
   handler: async ({ input, step }) => {
     // Step 2: Fetch conversations with messages using stratified sampling
@@ -58,7 +57,6 @@ export const GenerateConversationSummaries = new Workflow({
     return {
       stratification: stratificationInfo,
       conversationIds: conversationsWithMessages.map((c) => c.conversation.id),
-      conversations_fetched: conversationsWithMessages.length,
     };
   },
 });

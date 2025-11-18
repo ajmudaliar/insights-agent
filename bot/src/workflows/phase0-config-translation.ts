@@ -19,9 +19,11 @@ export const GenerateInsightsConfig = new Workflow({
     configId: z.string(),
     config: z.object({
       summary_prompt: z.string(),
+      extract_features: z.array(z.string()),
       attributes: z.array(z.any()),
       clustering_focus: z.string(),
     }),
+    result: z.any(),
   }),
   handler: async ({ input, step }) => {
     const config = await step("generate-config", async () => {
@@ -40,6 +42,11 @@ Generate a comprehensive configuration that will help answer the analytical ques
           .string()
           .describe(
             "A prompt template for summarizing individual conversations. Include what information to extract from the conversation transcript that relates to the analytical question. Keep it concise (2-3 sentences)."
+          ),
+        extract_features: z
+          .array(z.string())
+          .describe(
+            "List of 3-5 specific features to extract from conversations (e.g., 'product_mentions', 'feature_references', 'question_intent_type', 'error_mentions', 'integration_requests'). These are semantic features that help identify usage patterns."
           ),
         attributes: z
           .array(
@@ -69,15 +76,16 @@ Generate a comprehensive configuration that will help answer the analytical ques
       return output;
     });
 
-    const configId = await step("save-config", async () => {
+    const { configId, result } = await step("save-config", async () => {
       const configId = `cfg_${Date.now()}_${Math.random().toString(36).substring(7)}`;
       const createdAt = new Date().toISOString();
 
-      await InsightsConfigsTable.upsertRows({
+      const result = await InsightsConfigsTable.upsertRows({
         rows: [
           {
             key: configId,
             summary_prompt: config.summary_prompt,
+            extract_features: config.extract_features,
             attributes: config.attributes,
             clustering_focus: config.clustering_focus,
             agent_description: input.agent_description,
@@ -88,16 +96,18 @@ Generate a comprehensive configuration that will help answer the analytical ques
         keyColumn: "key",
       });
 
-      return configId;
+      return { configId, result };
     });
 
     return {
       configId,
       config: {
         summary_prompt: config.summary_prompt,
+        extract_features: config.extract_features,
         attributes: config.attributes,
         clustering_focus: config.clustering_focus,
       },
+      result
     };
   },
 });
