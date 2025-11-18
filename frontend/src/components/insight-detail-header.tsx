@@ -6,14 +6,15 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import type { InsightsConfig } from "@/types/insights";
-import { Calendar, Hash, Activity, Settings2, ChevronDown, Filter } from "lucide-react";
+import type { InsightsConfig, TopologyStats } from "@/types/insights";
+import { Calendar, Hash, Activity, Settings2, ChevronDown, Filter, FolderIcon, LayersIcon, MessageSquareIcon } from "lucide-react";
 
 interface InsightDetailHeaderProps {
   config: InsightsConfig;
+  stats?: TopologyStats;
 }
 
-export function InsightDetailHeader({ config }: InsightDetailHeaderProps) {
+export function InsightDetailHeader({ config, stats }: InsightDetailHeaderProps) {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
   const formatDate = (dateString: string) => {
@@ -63,7 +64,7 @@ export function InsightDetailHeader({ config }: InsightDetailHeaderProps) {
 
           <div className="flex items-center gap-1.5">
             <Hash className="h-3 w-3" />
-            <span className="font-mono">{config.key.split("_")[1]}</span>
+            <span className="font-mono">{config.key}</span>
           </div>
 
           {hasFilterableAttributes && (
@@ -83,6 +84,24 @@ export function InsightDetailHeader({ config }: InsightDetailHeaderProps) {
             <span>Active</span>
           </div>
         </div>
+
+        {/* Stats badges */}
+        {stats && (
+          <div className="flex flex-wrap gap-2">
+            <Badge variant="outline" className="text-xs font-normal border-border/50 text-muted-foreground">
+              <FolderIcon className="w-3 h-3 mr-1" />
+              {stats.total_categories} {stats.total_categories === 1 ? "category" : "categories"}
+            </Badge>
+            <Badge variant="outline" className="text-xs font-normal border-border/50 text-muted-foreground">
+              <LayersIcon className="w-3 h-3 mr-1" />
+              {stats.total_subcategories} {stats.total_subcategories === 1 ? "subcategory" : "subcategories"}
+            </Badge>
+            <Badge variant="outline" className="text-xs font-normal border-border/50 text-muted-foreground">
+              <MessageSquareIcon className="w-3 h-3 mr-1" />
+              {stats.total_conversations} {stats.total_conversations === 1 ? "conversation" : "conversations"}
+            </Badge>
+          </div>
+        )}
 
         {/* Collapsible Details Section */}
         <Collapsible open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>

@@ -1,257 +1,317 @@
-import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { useState, useEffect } from "react";
+import { ChevronDown, ChevronRight } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import type { ConversationCategory, ConversationFeatures, Message } from "@/types/insights";
 import { getConversationWithMessages } from "@/services/insights";
-import type { ConversationWithMessages, Message } from "@/types/insights";
-import { ArrowLeft, Calendar, MessageSquare } from "lucide-react";
 
 interface ConversationDetailProps {
   conversationId: string;
-  onBack: () => void;
+  configId: string;
+  assignment: ConversationCategory;
+  isSubcategory?: boolean;
 }
 
-export function ConversationDetail({ conversationId, onBack }: ConversationDetailProps) {
-  const [data, setData] = useState<ConversationWithMessages | null>(null);
+export function ConversationDetail({ conversationId, configId, assignment, isSubcategory }: ConversationDetailProps) {
+  const [isTranscriptOpen, setIsTranscriptOpen] = useState(false);
+  const [features, setFeatures] = useState<ConversationFeatures | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [conversationCreatedAt, setConversationCreatedAt] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const loadConversation = async () => {
+    const loadData = async () => {
       try {
         setIsLoading(true);
-        setError(null);
-        const result = await getConversationWithMessages(conversationId);
-        if (!result) {
-          setError("Conversation not found");
-        } else {
-          setData(result);
+
+        const [convWithMessages, featuresResult] = await Promise.all([
+          getConversationWithMessages(conversationId),
+          (async () => {
+            const { getConversationFeatures } = await import("@/services/insights");
+            const allFeatures = await getConversationFeatures(configId);
+            return allFeatures.find(f => f.key === conversationId) || null;
+          })(),
+        ]);
+
+        if (convWithMessages) {
+          setMessages(convWithMessages.messages);
+          setConversationCreatedAt(convWithMessages.conversation.createdAt);
         }
+
+        setFeatures(featuresResult);
       } catch (err) {
-        console.error("Failed to load conversation:", err);
-        setError("Failed to load conversation");
+        console.error("Failed to load conversation data:", err);
       } finally {
         setIsLoading(false);
       }
     };
 
-    loadConversation();
-  }, [conversationId]);
+    loadData();
+  }, [conversationId, configId]);
+
+  const getConfidenceColor = (confidence: number) => {
+    const percentage = confidence * 100;
+    if (percentage >= 80) return 'bg-green-500';
+    if (percentage >= 60) return 'bg-yellow-500';
+    return 'bg-red-500';
+  };
 
   const formatDate = (dateString: string) => {
+    if (!dateString) return "";
     const date = new Date(dateString);
-    return date.toLocaleString("en-US", {
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+
+    return date.toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
-      year: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
     });
   };
 
-  // Format message content based on type
-  const formatMessageContent = (message: Message): string[] => {
-    const type = message.type || "text";
-    const payload = message.payload;
+  const metrics = messages.length > 0 ? {
+    turn_count: Math.ceil(messages.length / 2),
+    user_message_count: messages.filter(m => m.direction === 'incoming').length,
+    bot_message_count: messages.filter(m => m.direction === 'outgoing').length,
+  } : null;
 
-    switch (type) {
-      case "text":
-      case "markdown":
-        return [payload?.text || message.content || ""];
-
-      case "choice":
-      case "dropdown":
-        const lines: string[] = [];
-        if (payload?.text) lines.push(payload.text);
-        if (payload?.options && Array.isArray(payload.options)) {
-          const optionsList = payload.options
-            .map((opt: any, idx: number) => `${idx + 1}. ${opt.label || opt.value}`)
-            .join("\n");
-          lines.push(`[Options presented:\n${optionsList}]`);
-        }
-        return lines;
-
-      case "image":
-        return ["[Image]"];
-      case "audio":
-        return ["[Audio]"];
-      case "video":
-        return [payload?.title ? `[Video: ${payload.title}]` : "[Video]"];
-      case "file":
-        return [payload?.title ? `[File: ${payload.title}]` : "[File]"];
-
-      case "card":
-        const cardLines: string[] = [];
-        if (payload?.title) cardLines.push(payload.title);
-        if (payload?.subtitle) cardLines.push(payload.subtitle);
-        if (payload?.actions && Array.isArray(payload.actions)) {
-          const actionsList = payload.actions
-            .map((action: any, idx: number) => `${idx + 1}. ${action.label}`)
-            .join("\n");
-          cardLines.push(`[Actions:\n${actionsList}]`);
-        }
-        return cardLines;
-
-      case "carousel":
-        if (!payload?.items || !Array.isArray(payload.items)) {
-          return ["[Carousel]"];
-        }
-        const cardTitles = payload.items
-          .map((card: any) => card.title)
-          .filter(Boolean)
-          .join(", ");
-        return [`[Carousel with ${payload.items.length} cards${cardTitles ? `: ${cardTitles}` : ""}]`];
-
-      case "location":
-        return ["[Location]"];
-
-      case "custom":
-        return [`[Custom message: ${payload?.name || "unknown"}]`];
-
-      default:
-        return [`[${type} message]`];
-    }
-  };
+  const confidence = isSubcategory ? assignment.subcategory_confidence : assignment.category_confidence;
+  const reasoning = isSubcategory ? assignment.subcategory_reasoning : assignment.category_reasoning;
 
   if (isLoading) {
     return (
       <div className="space-y-4">
-        <Skeleton className="h-8 w-full" />
-        <Skeleton className="h-20 w-full" />
-        <Skeleton className="h-20 w-full" />
-        <Skeleton className="h-20 w-full" />
+        <Skeleton className="h-16 w-full" />
+        <Skeleton className="h-32 w-full" />
+        <Skeleton className="h-24 w-full" />
       </div>
     );
   }
-
-  if (error || !data) {
-    return (
-      <div className="space-y-4">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onBack}
-          className="gap-2 -ml-2"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back
-        </Button>
-        <p className="text-sm text-destructive">{error || "Conversation not found"}</p>
-      </div>
-    );
-  }
-
-  // Sort messages chronologically
-  const sortedMessages = [...data.messages].sort(
-    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-  );
 
   return (
-    <div className="space-y-4">
-      {/* Back Button */}
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={onBack}
-        className="gap-2 -ml-2"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back
-      </Button>
+    <div className="space-y-6">
+      {/* Conversation Header Info */}
+      <div className="border border-border/40 rounded-md bg-white p-4">
+        <div className="flex items-center gap-4">
+          {/* Conversation ID */}
+          <span className="text-xs font-mono text-muted-foreground/70 truncate">
+            {conversationId}
+          </span>
 
-      {/* Conversation Header */}
-      <div className="space-y-3 pb-4 border-b">
-        <div className="flex items-center gap-2">
-          <MessageSquare className="h-4 w-4 text-muted-foreground" />
-          <h3 className="text-sm font-medium">Conversation</h3>
-        </div>
+          {/* Timestamp */}
+          {conversationCreatedAt && (
+            <span className="text-xs text-muted-foreground/60">
+              {formatDate(conversationCreatedAt)}
+            </span>
+          )}
 
-        <div className="grid grid-cols-2 gap-4 text-xs">
-          <div className="space-y-1">
-            <p className="text-muted-foreground">Channel</p>
-            <Badge variant="outline" className="text-xs">
-              {data.conversation.channel}
-            </Badge>
-          </div>
-          <div className="space-y-1">
-            <p className="text-muted-foreground">Integration</p>
-            <Badge variant="outline" className="text-xs">
-              {data.conversation.integration}
-            </Badge>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Calendar className="h-3 w-3" />
-          <span>{formatDate(data.conversation.createdAt)}</span>
-        </div>
-
-        {Object.keys(data.conversation.tags).length > 0 && (
-          <div className="space-y-2">
-            <p className="text-xs text-muted-foreground">Tags</p>
-            <div className="flex flex-wrap gap-1">
-              {Object.entries(data.conversation.tags).map(([key, value]) => (
-                <Badge key={key} variant="secondary" className="text-[10px] px-1.5 py-0">
-                  {key}: {value}
-                </Badge>
-              ))}
+          {/* Metrics */}
+          {metrics && (
+            <div className="flex items-center gap-3 text-xs text-muted-foreground/60">
+              <span className="tabular-nums">{metrics.turn_count} turns</span>
+              <span className="text-muted-foreground/30">·</span>
+              <span className="tabular-nums">{metrics.user_message_count}u / {metrics.bot_message_count}b</span>
             </div>
-          </div>
-        )}
-      </div>
+          )}
 
-      {/* Transcript */}
-      <div className="space-y-3">
-        <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-          Transcript ({sortedMessages.length} messages)
-        </h4>
-
-        <div className="space-y-0 max-h-[500px] overflow-y-auto border rounded-lg p-4 bg-muted/10">
-          {sortedMessages.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-8">
-              No messages in this conversation
-            </p>
-          ) : (
-            <div className="space-y-4 font-mono text-sm leading-relaxed">
-              {sortedMessages.map((message, idx) => {
-                const speaker = message.direction === "incoming" ? "User" : "Bot";
-                const contentLines = formatMessageContent(message);
-
-                return (
-                  <div key={message.id} className="space-y-1">
-                    {contentLines.map((line, lineIdx) => (
-                      <div key={`${idx}-${lineIdx}`}>
-                        {lineIdx === 0 ? (
-                          <div>
-                            <span className={`font-semibold ${
-                              message.direction === "incoming"
-                                ? "text-blue-600 dark:text-blue-400"
-                                : "text-green-600 dark:text-green-400"
-                            }`}>
-                              {speaker}:
-                            </span>
-                            <span className="ml-2">{line}</span>
-                          </div>
-                        ) : (
-                          <div className="pl-12 text-muted-foreground">{line}</div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                );
-              })}
+          {/* Confidence */}
+          {confidence !== undefined && (
+            <div className="ml-auto flex items-center gap-2">
+              <span className="text-xs font-medium text-muted-foreground/70 tabular-nums">
+                {(confidence * 100).toFixed(0)}%
+              </span>
+              <div className="w-16 h-1 bg-muted/50 rounded-full overflow-hidden">
+                <div
+                  className={`h-full ${getConfidenceColor(confidence)}`}
+                  style={{ width: `${confidence * 100}%` }}
+                />
+              </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* Conversation ID */}
-      <div className="pt-4 border-t">
-        <div className="flex justify-between items-center text-xs">
-          <span className="text-muted-foreground">Conversation ID</span>
-          <span className="font-mono">{conversationId}</span>
-        </div>
+      {/* Conversation Details */}
+      <div className="space-y-6">
+        {/* Categorization */}
+        {reasoning && (
+          <div className="space-y-2">
+            <h4 className="text-xs font-medium text-muted-foreground/70">Reasoning</h4>
+            <p className="text-sm text-muted-foreground/80 leading-relaxed italic">
+              "{reasoning}"
+            </p>
+          </div>
+        )}
+
+        {/* Intent & Outcome Row */}
+        {features && (
+          <div className="grid grid-cols-2 gap-6">
+            <div className="space-y-1.5">
+              <h4 className="text-xs font-medium text-muted-foreground/70">Intent</h4>
+              <p className="text-sm text-foreground">{features.primary_user_intent}</p>
+            </div>
+            <div className="space-y-1.5">
+              <h4 className="text-xs font-medium text-muted-foreground/70">Outcome</h4>
+              <Badge
+                variant={
+                  features.conversation_outcome === 'satisfied' ? 'default' :
+                  features.conversation_outcome === 'unsatisfied' ? 'destructive' :
+                  'secondary'
+                }
+                className="text-xs font-normal"
+              >
+                {features.conversation_outcome}
+              </Badge>
+            </div>
+          </div>
+        )}
+
+        {/* Key Topics */}
+        {features?.key_topics && features.key_topics.length > 0 && (
+          <div className="space-y-2">
+            <h4 className="text-xs font-medium text-muted-foreground/70">Topics</h4>
+            <div className="flex flex-wrap gap-1.5">
+              {features.key_topics.map((topic, idx) => (
+                <Badge key={idx} variant="outline" className="text-xs font-normal border-border/40">
+                  {topic}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Specific Features */}
+        {features?.specific_features && Object.keys(features.specific_features).length > 0 && (
+          <div className="space-y-3">
+            <h4 className="text-xs font-medium text-muted-foreground/70">Features</h4>
+            {Object.entries(features.specific_features).map(([key, values]) => (
+              values.length > 0 && (
+                <div key={key} className="space-y-1.5">
+                  <span className="text-xs text-muted-foreground/60 capitalize">
+                    {key.replace(/_/g, ' ')}
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {values.map((value, idx) => (
+                      <Badge key={idx} variant="secondary" className="text-xs font-normal">
+                        {value}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )
+            ))}
+          </div>
+        )}
+
+        {/* Extracted Attributes */}
+        {features?.attributes && Object.keys(features.attributes).length > 0 && (
+          <div className="space-y-2">
+            <h4 className="text-xs font-medium text-muted-foreground/70">Attributes</h4>
+            <div className="space-y-1.5">
+              {Object.entries(features.attributes).map(([key, value]) => (
+                <div key={key} className="flex items-center justify-between py-1.5 border-b border-border/20 last:border-0">
+                  <span className="text-xs text-muted-foreground/60 capitalize">
+                    {key.replace(/_/g, ' ')}
+                  </span>
+                  <span className="text-xs font-medium text-foreground">
+                    {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Transcript */}
+        {messages.length > 0 && (
+          <div className="space-y-2">
+            <Collapsible open={isTranscriptOpen} onOpenChange={setIsTranscriptOpen}>
+              <CollapsibleTrigger className="flex items-center gap-1.5 hover:text-foreground transition-colors">
+                <h4 className="text-xs font-medium text-muted-foreground/70">
+                  Transcript ({messages.length})
+                </h4>
+                {isTranscriptOpen ? (
+                  <ChevronDown className="h-3 w-3 text-muted-foreground/60" />
+                ) : (
+                  <ChevronRight className="h-3 w-3 text-muted-foreground/60" />
+                )}
+              </CollapsibleTrigger>
+
+              <CollapsibleContent>
+                <div className="mt-3 space-y-4 max-h-[400px] overflow-y-auto pr-2">
+                  {messages.map((message, idx) => {
+                    const hasPayload = message.payload && typeof message.payload === 'object';
+                    const text = message.content || (hasPayload && message.payload.text) || '';
+                    const options = hasPayload && Array.isArray(message.payload.options) ? message.payload.options : [];
+
+                    return (
+                      <div key={message.id || idx} className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Badge
+                            variant={message.direction === 'incoming' ? 'default' : 'secondary'}
+                            className="text-[10px] font-normal px-1.5 py-0 h-4"
+                          >
+                            {message.direction === 'incoming' ? 'User' : 'Bot'}
+                          </Badge>
+                          {message.createdAt && (
+                            <span className="text-[10px] text-muted-foreground/50">
+                              {new Date(message.createdAt).toLocaleTimeString('en-US', {
+                                hour: 'numeric',
+                                minute: '2-digit',
+                                hour12: true
+                              })}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className={`pl-3 border-l-2 ${
+                          message.direction === 'incoming'
+                            ? 'border-blue-200'
+                            : 'border-purple-200'
+                        }`}>
+                          {text ? (
+                            <div className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap">
+                              {text.split('\n').map((line, i) => {
+                                const formatted = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                                return (
+                                  <p key={i} dangerouslySetInnerHTML={{ __html: formatted }} className="mb-1 last:mb-0" />
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <p className="text-xs text-muted-foreground italic">
+                              {JSON.stringify(message.payload)}
+                            </p>
+                          )}
+
+                          {options.length > 0 && (
+                            <div className="mt-2 space-y-1.5">
+                              {options.map((option: any, optIdx: number) => (
+                                <div
+                                  key={optIdx}
+                                  className="px-2.5 py-1.5 bg-muted/40 border border-border/30 rounded text-xs text-foreground/80"
+                                >
+                                  {option.label || option.value || JSON.stringify(option)}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          </div>
+        )}
       </div>
     </div>
   );

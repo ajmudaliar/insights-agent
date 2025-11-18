@@ -3,9 +3,9 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { InsightDetailHeader } from "@/components/insight-detail-header";
-import { CategoriesTable } from "@/components/categories-table";
-import { getConfig } from "@/services/insights";
-import type { InsightsConfig } from "@/types/insights";
+import { CategoriesView } from "@/components/categories-view";
+import { getConfig, getTopologyStats } from "@/services/insights";
+import type { InsightsConfig, TopologyStats } from "@/types/insights";
 import { ArrowLeft, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
@@ -13,6 +13,7 @@ export default function InsightDetail() {
   const { configId } = useParams<{ configId: string }>();
   const navigate = useNavigate();
   const [config, setConfig] = useState<InsightsConfig | null>(null);
+  const [stats, setStats] = useState<TopologyStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,11 +30,16 @@ export default function InsightDetail() {
 
     try {
       setIsLoading(true);
-      const data = await getConfig(configId);
-      if (!data) {
+      const [configData, statsData] = await Promise.all([
+        getConfig(configId),
+        getTopologyStats(configId),
+      ]);
+
+      if (!configData) {
         setError("Insight not found");
       } else {
-        setConfig(data);
+        setConfig(configData);
+        setStats(statsData);
       }
     } catch (err) {
       console.error("Failed to load config:", err);
@@ -87,13 +93,12 @@ export default function InsightDetail() {
       {!isLoading && !error && config && (
         <div className="space-y-8">
           {/* Config Header */}
-          <InsightDetailHeader config={config} />
+          <InsightDetailHeader config={config} stats={stats || undefined} />
 
-          {/* Categories Table */}
-          <CategoriesTable configId={config.key} />
+          {/* Categories and Subcategories */}
+          <CategoriesView configId={config.key} />
         </div>
       )}
     </div>
   );
 }
-

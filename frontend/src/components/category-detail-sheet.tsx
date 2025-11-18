@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Sheet,
   SheetContent,
@@ -7,15 +7,17 @@ import {
 } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import type { Topic, Subtopic } from "@/types/insights";
-import { X, ChevronRight } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import type { Category, Subcategory, ConversationCategory } from "@/types/insights";
+import { getConversationCategories } from "@/services/insights";
 import { ConversationDetail } from "@/components/conversation-detail";
+import { ArrowLeft } from "lucide-react";
 
 interface CategoryDetailSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  category: Topic | null;
-  subcategory?: Subtopic | null;
+  category: Category | null;
+  subcategory?: Subcategory | null;
 }
 
 export function CategoryDetailSheet({
@@ -24,9 +26,40 @@ export function CategoryDetailSheet({
   category,
   subcategory,
 }: CategoryDetailSheetProps) {
+  const [assignments, setAssignments] = useState<ConversationCategory[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [selectedAssignment, setSelectedAssignment] = useState<ConversationCategory | null>(null);
+
   const item = subcategory || category;
-  const isSubtopic = !!subcategory;
-  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
+  const isSubcategory = !!subcategory;
+
+  useEffect(() => {
+    if (!open || !item) {
+      setAssignments([]);
+      setSelectedAssignment(null);
+      return;
+    }
+
+    const loadConversations = async () => {
+      try {
+        setIsLoading(true);
+        const allAssignments = await getConversationCategories(item.config_id);
+
+        // Filter by category or subcategory
+        const filtered = isSubcategory
+          ? allAssignments.filter(a => a.subcategory_id === item.key)
+          : allAssignments.filter(a => a.category_id === item.key);
+
+        setAssignments(filtered);
+      } catch (err) {
+        console.error("Failed to load conversations:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadConversations();
+  }, [open, item, isSubcategory]);
 
   if (!item) return null;
 
@@ -42,166 +75,137 @@ export function CategoryDetailSheet({
     });
   };
 
-  // Show conversation detail view if a conversation is selected
-  if (selectedConversationId) {
-    return (
-      <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent className="w-[625px] sm:max-w-[625px] p-0">
-          <div className="border-b px-6 py-4 flex items-center justify-between">
-            <SheetHeader className="flex-1">
-              <SheetTitle className="text-lg font-semibold text-left">
-                Conversation
-              </SheetTitle>
-            </SheetHeader>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onOpenChange(false)}
-              className="h-8 w-8 p-0"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-
-          <div className="px-6 py-6 overflow-y-auto max-h-[calc(100vh-80px)]">
-            <ConversationDetail
-              conversationId={selectedConversationId}
-              onBack={() => setSelectedConversationId(null)}
-            />
-          </div>
-        </SheetContent>
-      </Sheet>
-    );
-  }
-
-  // Show topic/subtopic detail view
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-[625px] sm:max-w-[625px] p-0">
-        {/* Header */}
-        <div className="border-b px-6 py-4 flex items-center justify-between">
-          <SheetHeader className="flex-1">
+      <SheetContent className="w-[625px] sm:max-w-[625px] p-0 flex flex-col">
+        {/* Sticky Header */}
+        <div className="sticky top-0 z-10 bg-background border-b px-6 py-4">
+          <SheetHeader>
             <div className="flex items-center gap-2 mb-1">
               <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
-                {isSubtopic ? "Subtopic" : "Topic"}
+                {isSubcategory ? "Subcategory" : "Category"}
               </Badge>
             </div>
             <SheetTitle className="text-lg font-semibold text-left">
               {item.name}
             </SheetTitle>
           </SheetHeader>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onOpenChange(false)}
-            className="h-8 w-8 p-0"
-          >
-            <X className="h-4 w-4" />
-          </Button>
         </div>
 
-        {/* Content */}
-        <div className="px-6 py-6 space-y-6 overflow-y-auto max-h-[calc(100vh-80px)]">
-          {/* Description */}
-          <div className="space-y-2">
-            <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              Description
-            </h3>
-            <p className="text-sm leading-relaxed">{item.description}</p>
-          </div>
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="px-6 py-6 space-y-6">
+            {/* Back Button (shown when conversation is selected) */}
+            {selectedAssignment && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelectedAssignment(null)}
+                className="gap-2 -ml-2"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Back to conversations
+              </Button>
+            )}
 
-          {/* Stats */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">Conversations</p>
-              <p className="text-2xl font-semibold tabular-nums">
-                {item.conversationCount}
-              </p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">Percentage</p>
-              <p className="text-2xl font-semibold tabular-nums">
-                {item.percentage ? `${item.percentage.toFixed(1)}%` : "-"}
-              </p>
-            </div>
-          </div>
-
-          {/* Conversations List */}
-          <div className="space-y-3">
-            <div className="flex items-baseline gap-2">
-              <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Conversations
-              </h3>
-              <span className="text-xs text-muted-foreground">
-                {item.conversationIds.length}
-              </span>
-            </div>
-
-            {item.conversationIds.length === 0 ? (
-              <div className="py-8 text-center">
-                <p className="text-sm text-muted-foreground">
-                  No conversations found for this {isSubtopic ? "subtopic" : "topic"}
-                </p>
-              </div>
+            {/* Show either conversation list or conversation detail */}
+            {selectedAssignment ? (
+              <ConversationDetail
+                conversationId={selectedAssignment.conversation_id}
+                configId={item.config_id}
+                assignment={selectedAssignment}
+                isSubcategory={isSubcategory}
+              />
             ) : (
-              <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                {item.conversationIds.map((convId) => (
-                  <button
-                    key={convId}
-                    onClick={() => setSelectedConversationId(convId)}
-                    className="w-full px-3 py-2.5 bg-muted/30 hover:bg-muted/50 rounded text-left flex items-center justify-between group transition-colors"
-                  >
-                    <span className="text-xs font-mono text-muted-foreground group-hover:text-foreground">
-                      {convId}
+              <>
+                {/* Summary */}
+                <div className="space-y-2">
+                  <h3 className="text-xs font-medium text-muted-foreground/70">Summary</h3>
+                  <p className="text-sm leading-relaxed">{item.summary}</p>
+                </div>
+
+                {/* Stats */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Conversations</p>
+                    <p className="text-2xl font-semibold tabular-nums">
+                      {item.conversation_count}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Percentage</p>
+                    <p className="text-2xl font-semibold tabular-nums">
+                      {item.frequency_pct.toFixed(1)}%
+                    </p>
+                  </div>
+                </div>
+
+                {/* Conversations List */}
+                <div className="space-y-3">
+                  <div className="flex items-baseline gap-2">
+                    <h3 className="text-xs font-medium text-muted-foreground/70">Conversations</h3>
+                    <span className="text-xs text-muted-foreground">
+                      {assignments.length}
                     </span>
-                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 group-hover:text-foreground transition-colors" />
-                  </button>
-                ))}
-              </div>
+                  </div>
+
+                  {isLoading ? (
+                    <div className="space-y-2">
+                      {[...Array(3)].map((_, i) => (
+                        <Skeleton key={i} className="h-12 w-full" />
+                      ))}
+                    </div>
+                  ) : assignments.length === 0 ? (
+                    <div className="py-8 text-center">
+                      <p className="text-sm text-muted-foreground">
+                        No conversations found for this {isSubcategory ? "subcategory" : "category"}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {assignments.map((assignment) => (
+                        <button
+                          key={assignment.conversation_id}
+                          onClick={() => setSelectedAssignment(assignment)}
+                          className="w-full text-left px-4 py-3 border border-border/40 rounded-md bg-white hover:bg-accent/5 transition-colors duration-150"
+                        >
+                          <span className="text-xs font-mono text-muted-foreground/70">
+                            {assignment.conversation_id}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Meta */}
+                <div className="pt-4 border-t space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-muted-foreground">Created</span>
+                    <span className="text-xs">{formatDate(item.createdAt)}</span>
+                  </div>
+
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-muted-foreground">ID</span>
+                    <span className="text-xs font-mono truncate ml-4">{item.key}</span>
+                  </div>
+                </div>
+
+                {/* Parent Category (for subcategories) */}
+                {isSubcategory && category && (
+                  <div className="pt-4 border-t space-y-2">
+                    <h3 className="text-xs font-medium text-muted-foreground/70">Parent Category</h3>
+                    <div className="rounded-md bg-muted/30 p-3">
+                      <p className="text-sm font-medium">{category.name}</p>
+                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                        {category.summary}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
-
-          {/* Meta */}
-          <div className="pt-4 border-t space-y-3">
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-muted-foreground">Created</span>
-              <span className="text-xs">{formatDate(item.created_at)}</span>
-            </div>
-
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-muted-foreground">
-                {isSubtopic ? "Topic" : "Topic"} Index
-              </span>
-              <span className="text-xs font-mono">{item.topicIndex}</span>
-            </div>
-
-            {isSubtopic && subcategory && (
-              <div className="flex justify-between items-center">
-                <span className="text-xs text-muted-foreground">Subtopic Index</span>
-                <span className="text-xs font-mono">{subcategory.subtopicIndex}</span>
-              </div>
-            )}
-
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-muted-foreground">ID</span>
-              <span className="text-xs font-mono truncate ml-4">{item.key}</span>
-            </div>
-          </div>
-
-          {/* Parent Topic (for subtopics) */}
-          {isSubtopic && category && (
-            <div className="pt-4 border-t space-y-2">
-              <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Parent Topic
-              </h3>
-              <div className="rounded-md bg-muted/30 p-3">
-                <p className="text-sm font-medium">{category.name}</p>
-                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                  {category.description}
-                </p>
-              </div>
-            </div>
-          )}
         </div>
       </SheetContent>
     </Sheet>
