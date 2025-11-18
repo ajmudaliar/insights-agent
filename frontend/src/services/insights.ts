@@ -20,7 +20,7 @@ export async function createInsight(input: {
 }): Promise<{ configId: string }> {
   try {
     const { workflow } = await client.getOrCreateWorkflow({
-      name: "generate_config",
+      name: "config_translation",
       status: "pending",
       tags: { configType: "insights" },
       input,
