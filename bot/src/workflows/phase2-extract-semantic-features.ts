@@ -27,7 +27,7 @@ export const ExtractSemanticFeatures = new Workflow({
   }),
   handler: async ({ input, step }) => {
     const allResults = await step.map(
-      "extract-features-from-conversations",
+      "extract-and-save-conversation-features",
       input.conversationIds,
       async (conversationId) => {
         const messages = await fetchLastNMessages(conversationId, 100);
@@ -76,81 +76,88 @@ export const ExtractSemanticFeatures = new Workflow({
         });
 
         if (shouldExclude) {
-          return null; // Exclude this conversation from results
+          return { excluded: true }; // Mark as excluded
         }
 
-        // Generate semantic string for embedding (used later in clustering)
-        const semanticString = [
-          // Intent: provides the "what they're trying to accomplish" context
-          extractedData.primary_user_intent,
+        // Generate semantic string for LLM-based category generation
+        // Format: structured and readable for pattern discovery
+        const featuresParts: string[] = [];
 
-          // Specific features: CORE of usage patterns - with labels for clarity
-          ...Object.entries(extractedData.specific_features).flatMap(([featureType, mentions]) =>
-            mentions.map((mention: string) => `${featureType}: ${mention}`)
-          ),
+        // 1. Primary intent - what user is trying to accomplish
+        featuresParts.push(`Intent: ${extractedData.primary_user_intent}`);
 
-          // Topics: additional context for disambiguation
-          ...extractedData.key_topics,
-        ]
-          .filter(Boolean)
-          .join(". ");
+        // 2. Specific features - with clear labels
+        const featuresEntries = Object.entries(extractedData.specific_features)
+          .filter(([_, mentions]) => mentions.length > 0)
+          .map(([featureType, mentions]) => `${featureType}: [${mentions.join(", ")}]`);
+        if (featuresEntries.length > 0) {
+          featuresParts.push(`Features: {${featuresEntries.join("; ")}}`);
+        }
 
-        // Generate embedding from semantic string (with rate limiting)
-        const embedding = await generateEmbedding(semanticString);
+        // 3. Key topics discussed
+        if (extractedData.key_topics.length > 0) {
+          featuresParts.push(`Topics: ${extractedData.key_topics.join(", ")}`);
+        }
+
+        // 4. Conversation outcome - satisfaction level
+        featuresParts.push(`Outcome: ${extractedData.conversation_outcome}`);
+
+        // 5. User-defined attributes - provide full context
+        const attributesEntries = Object.entries(extractedData.attributes).map(
+          ([attrName, attrValue]) => `${attrName}: ${attrValue}`
+        );
+        if (attributesEntries.length > 0) {
+          featuresParts.push(`Attributes: {${attributesEntries.join(", ")}}`);
+        }
+
+        const semanticString = featuresParts.join(" | ");
+
+        // Save to table immediately after extraction
+        const saveResult = await ConversationFeaturesTable.upsertRows({
+          rows: [
+            {
+              key: conversationId,
+              config_id: input.configId,
+              primary_user_intent: extractedData.primary_user_intent,
+              specific_features: extractedData.specific_features,
+              conversation_outcome: extractedData.conversation_outcome,
+              key_topics: extractedData.key_topics,
+              attributes: extractedData.attributes,
+              semantic_string: semanticString,
+              transcript: transcript,
+            },
+          ],
+          keyColumn: "key",
+        });
 
         return {
+          excluded: false,
           conversationId,
-          primary_user_intent: extractedData.primary_user_intent,
-          specific_features: extractedData.specific_features,
-          conversation_outcome: extractedData.conversation_outcome,
-          key_topics: extractedData.key_topics,
-          attributes: extractedData.attributes,
-          semantic_string: semanticString,
-          embedding: embedding,
+          errors: saveResult.errors,
+          warnings: saveResult.warnings,
         };
       },
       { concurrency: 10, maxAttempts: 2 }
     );
 
-    // Filter out null results (excluded conversations)
-    const filteredResults = allResults.filter((result) => result !== null);
-
+    // Calculate statistics and aggregate save results
     const total_processed = input.conversationIds.length;
-    const total_included = filteredResults.length;
-    const total_excluded = total_processed - total_included;
+    const total_excluded = allResults.filter((r) => r.excluded).length;
+    const total_included = total_processed - total_excluded;
 
-    // Save results to table
-    const result = await step("save-to-table", async () => {
-      if (filteredResults.length === 0) {
-        return true; // Nothing to save
-      }
+    // Aggregate errors and warnings from all saves
+    const allErrors = allResults.filter((r) => !r.excluded && r.errors).flatMap((r) => r.errors!);
 
-      const createdAt = new Date().toISOString();
-
-      const result = await ConversationFeaturesTable.upsertRows({
-        rows: filteredResults.map((result) => ({
-          key: result.conversationId,
-          config_id: input.configId,
-          primary_user_intent: result.primary_user_intent,
-          specific_features: result.specific_features,
-          conversation_outcome: result.conversation_outcome,
-          key_topics: result.key_topics,
-          attributes: result.attributes,
-          semantic_string: result.semantic_string,
-          embedding: result.embedding,
-          created_at: createdAt,
-        })),
-        keyColumn: "key",
-      });
-
-      return result;
-    });
+    const allWarnings = allResults.filter((r) => !r.excluded && r.warnings).flatMap((r) => r.warnings!);
 
     return {
       total_processed,
       total_included,
       total_excluded,
-      save_to_table_result: result,
+      save_to_table_result: {
+        errors: allErrors.length > 0 ? allErrors : undefined,
+        warnings: allWarnings.length > 0 ? allWarnings : undefined,
+      },
     };
   },
 });
