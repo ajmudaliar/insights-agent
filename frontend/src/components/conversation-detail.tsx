@@ -1,54 +1,37 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import type { ConversationCategory, ConversationFeatures, Message } from "@/types/insights";
-import { getConversationWithMessages } from "@/services/insights";
+import type { ConversationCategory, ConversationFeatures } from "@/types/insights";
 
 interface ConversationDetailProps {
   conversationId: string;
   configId: string;
   assignment: ConversationCategory;
   isSubcategory?: boolean;
+  features: ConversationFeatures | null;
 }
 
-export function ConversationDetail({ conversationId, configId, assignment, isSubcategory }: ConversationDetailProps) {
+export function ConversationDetail({ conversationId, configId, assignment, isSubcategory, features }: ConversationDetailProps) {
   const [isTranscriptOpen, setIsTranscriptOpen] = useState(false);
-  const [features, setFeatures] = useState<ConversationFeatures | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [conversationCreatedAt, setConversationCreatedAt] = useState<string>("");
-  const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        setIsLoading(true);
+  // Parse transcript into messages
+  const parseTranscript = (transcript: string) => {
+    const lines = transcript.split('\n').filter(line => line.trim());
+    const messages: Array<{ role: 'user' | 'bot'; text: string }> = [];
 
-        const [convWithMessages, featuresResult] = await Promise.all([
-          getConversationWithMessages(conversationId),
-          (async () => {
-            const { getConversationFeatures } = await import("@/services/insights");
-            const allFeatures = await getConversationFeatures(configId);
-            return allFeatures.find(f => f.key === conversationId) || null;
-          })(),
-        ]);
-
-        if (convWithMessages) {
-          setMessages(convWithMessages.messages);
-          setConversationCreatedAt(convWithMessages.conversation.createdAt);
-        }
-
-        setFeatures(featuresResult);
-      } catch (err) {
-        console.error("Failed to load conversation data:", err);
-      } finally {
-        setIsLoading(false);
+    lines.forEach(line => {
+      if (line.startsWith('User: ')) {
+        messages.push({ role: 'user', text: line.substring(6) });
+      } else if (line.startsWith('Bot: ')) {
+        messages.push({ role: 'bot', text: line.substring(5) });
       }
-    };
+    });
 
-    loadData();
-  }, [conversationId, configId]);
+    return messages;
+  };
+
+  const messages = features?.transcript ? parseTranscript(features.transcript) : [];
 
   const getConfidenceColor = (confidence: number) => {
     const percentage = confidence * 100;
@@ -57,43 +40,8 @@ export function ConversationDetail({ conversationId, configId, assignment, isSub
     return 'bg-red-500';
   };
 
-  const formatDate = (dateString: string) => {
-    if (!dateString) return "";
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
-
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-    });
-  };
-
-  const metrics = messages.length > 0 ? {
-    turn_count: Math.ceil(messages.length / 2),
-    user_message_count: messages.filter(m => m.direction === 'incoming').length,
-    bot_message_count: messages.filter(m => m.direction === 'outgoing').length,
-  } : null;
-
   const confidence = isSubcategory ? assignment.subcategory_confidence : assignment.category_confidence;
   const reasoning = isSubcategory ? assignment.subcategory_reasoning : assignment.category_reasoning;
-
-  if (isLoading) {
-    return (
-      <div className="space-y-4">
-        <Skeleton className="h-16 w-full" />
-        <Skeleton className="h-32 w-full" />
-        <Skeleton className="h-24 w-full" />
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
@@ -104,22 +52,6 @@ export function ConversationDetail({ conversationId, configId, assignment, isSub
           <span className="text-xs font-mono text-muted-foreground/70 truncate">
             {conversationId}
           </span>
-
-          {/* Timestamp */}
-          {conversationCreatedAt && (
-            <span className="text-xs text-muted-foreground/60">
-              {formatDate(conversationCreatedAt)}
-            </span>
-          )}
-
-          {/* Metrics */}
-          {metrics && (
-            <div className="flex items-center gap-3 text-xs text-muted-foreground/60">
-              <span className="tabular-nums">{metrics.turn_count} turns</span>
-              <span className="text-muted-foreground/30">·</span>
-              <span className="tabular-nums">{metrics.user_message_count}u / {metrics.bot_message_count}b</span>
-            </div>
-          )}
 
           {/* Confidence */}
           {confidence !== undefined && (
@@ -245,68 +177,29 @@ export function ConversationDetail({ conversationId, configId, assignment, isSub
               </CollapsibleTrigger>
 
               <CollapsibleContent>
-                <div className="mt-3 space-y-4 max-h-[400px] overflow-y-auto pr-2">
-                  {messages.map((message, idx) => {
-                    const hasPayload = message.payload && typeof message.payload === 'object';
-                    const text = message.content || (hasPayload && message.payload.text) || '';
-                    const options = hasPayload && Array.isArray(message.payload.options) ? message.payload.options : [];
-
-                    return (
-                      <div key={message.id || idx} className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <Badge
-                            variant={message.direction === 'incoming' ? 'default' : 'secondary'}
-                            className="text-[10px] font-normal px-1.5 py-0 h-4"
-                          >
-                            {message.direction === 'incoming' ? 'User' : 'Bot'}
-                          </Badge>
-                          {message.createdAt && (
-                            <span className="text-[10px] text-muted-foreground/50">
-                              {new Date(message.createdAt).toLocaleTimeString('en-US', {
-                                hour: 'numeric',
-                                minute: '2-digit',
-                                hour12: true
-                              })}
-                            </span>
-                          )}
-                        </div>
-
-                        <div className={`pl-3 border-l-2 ${
-                          message.direction === 'incoming'
-                            ? 'border-blue-200'
-                            : 'border-purple-200'
-                        }`}>
-                          {text ? (
-                            <div className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap">
-                              {text.split('\n').map((line, i) => {
-                                const formatted = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-                                return (
-                                  <p key={i} dangerouslySetInnerHTML={{ __html: formatted }} className="mb-1 last:mb-0" />
-                                );
-                              })}
-                            </div>
-                          ) : (
-                            <p className="text-xs text-muted-foreground italic">
-                              {JSON.stringify(message.payload)}
-                            </p>
-                          )}
-
-                          {options.length > 0 && (
-                            <div className="mt-2 space-y-1.5">
-                              {options.map((option: any, optIdx: number) => (
-                                <div
-                                  key={optIdx}
-                                  className="px-2.5 py-1.5 bg-muted/40 border border-border/30 rounded text-xs text-foreground/80"
-                                >
-                                  {option.label || option.value || JSON.stringify(option)}
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
+                <div className="mt-2 space-y-2">
+                  {messages.map((message, idx) => (
+                    <div
+                      key={idx}
+                      className={`px-2.5 py-2 rounded text-xs ${
+                        message.role === 'user'
+                          ? 'bg-muted/50'
+                          : 'bg-blue-50 border border-blue-100'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <Badge
+                          variant={message.role === 'user' ? 'default' : 'secondary'}
+                          className="text-[10px] px-1.5 py-0 h-4"
+                        >
+                          {message.role === 'user' ? 'User' : 'Bot'}
+                        </Badge>
                       </div>
-                    );
-                  })}
+                      <p className="leading-relaxed text-foreground/90 whitespace-pre-wrap">
+                        {message.text}
+                      </p>
+                    </div>
+                  ))}
                 </div>
               </CollapsibleContent>
             </Collapsible>

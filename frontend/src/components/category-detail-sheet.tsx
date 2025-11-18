@@ -8,9 +8,10 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { Category, Subcategory, ConversationCategory } from "@/types/insights";
-import { getConversationCategories } from "@/services/insights";
+import type { Category, Subcategory, ConversationCategory, ConversationFeatures } from "@/types/insights";
+import { getConversationCategories, getConversationFeatures } from "@/services/insights";
 import { ConversationDetail } from "@/components/conversation-detail";
+import { ConversationListItem } from "@/components/conversation-list-item";
 import { ArrowLeft } from "lucide-react";
 
 interface CategoryDetailSheetProps {
@@ -27,6 +28,7 @@ export function CategoryDetailSheet({
   subcategory,
 }: CategoryDetailSheetProps) {
   const [assignments, setAssignments] = useState<ConversationCategory[]>([]);
+  const [features, setFeatures] = useState<ConversationFeatures[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedAssignment, setSelectedAssignment] = useState<ConversationCategory | null>(null);
 
@@ -36,14 +38,20 @@ export function CategoryDetailSheet({
   useEffect(() => {
     if (!open || !item) {
       setAssignments([]);
+      setFeatures([]);
       setSelectedAssignment(null);
       return;
     }
 
-    const loadConversations = async () => {
+    const loadData = async () => {
       try {
         setIsLoading(true);
-        const allAssignments = await getConversationCategories(item.config_id);
+
+        // Load assignments and features in parallel
+        const [allAssignments, allFeatures] = await Promise.all([
+          getConversationCategories(item.config_id),
+          getConversationFeatures(item.config_id),
+        ]);
 
         // Filter by category or subcategory
         const filtered = isSubcategory
@@ -51,14 +59,15 @@ export function CategoryDetailSheet({
           : allAssignments.filter(a => a.category_id === item.key);
 
         setAssignments(filtered);
+        setFeatures(allFeatures);
       } catch (err) {
-        console.error("Failed to load conversations:", err);
+        console.error("Failed to load data:", err);
       } finally {
         setIsLoading(false);
       }
     };
 
-    loadConversations();
+    loadData();
   }, [open, item, isSubcategory]);
 
   if (!item) return null;
@@ -115,6 +124,7 @@ export function CategoryDetailSheet({
                 configId={item.config_id}
                 assignment={selectedAssignment}
                 isSubcategory={isSubcategory}
+                features={features.find(f => f.key === selectedAssignment.conversation_id) || null}
               />
             ) : (
               <>
@@ -164,15 +174,13 @@ export function CategoryDetailSheet({
                   ) : (
                     <div className="space-y-2">
                       {assignments.map((assignment) => (
-                        <button
+                        <ConversationListItem
                           key={assignment.conversation_id}
+                          assignment={assignment}
+                          isSubcategory={isSubcategory}
+                          features={features.find(f => f.key === assignment.conversation_id) || null}
                           onClick={() => setSelectedAssignment(assignment)}
-                          className="w-full text-left px-4 py-3 border border-border/40 rounded-md bg-white hover:bg-accent/5 transition-colors duration-150"
-                        >
-                          <span className="text-xs font-mono text-muted-foreground/70">
-                            {assignment.conversation_id}
-                          </span>
-                        </button>
+                        />
                       ))}
                     </div>
                   )}
