@@ -254,6 +254,51 @@ export async function getTopologyStats(configId: string): Promise<import("@/type
 }
 
 /**
+ * Update an insights config
+ */
+export async function updateConfig(
+  configId: string,
+  updates: Partial<Omit<InsightsConfig, "id" | "key" | "created_at" | "createdAt" | "updatedAt">>
+): Promise<InsightsConfig> {
+  try {
+    // First, get the current config to merge with updates
+    const currentConfig = await getConfig(configId);
+    if (!currentConfig) {
+      throw new Error("Config not found");
+    }
+
+    // Merge updates with current config
+    const updatedConfig = {
+      key: configId,
+      agent_description: updates.agent_description ?? currentConfig.agent_description,
+      analytical_question: updates.analytical_question ?? currentConfig.analytical_question,
+      summary_prompt: updates.summary_prompt ?? currentConfig.summary_prompt,
+      extract_features: updates.extract_features ?? currentConfig.extract_features,
+      attributes: updates.attributes ?? currentConfig.attributes,
+      clustering_focus: updates.clustering_focus ?? currentConfig.clustering_focus,
+      created_at: currentConfig.created_at,
+    };
+
+    // Upsert the config
+    await client.upsertTableRows({
+      table: "InsightsConfigsTable",
+      rows: [updatedConfig],
+    });
+
+    // Fetch and return the updated config
+    const result = await getConfig(configId);
+    if (!result) {
+      throw new Error("Failed to fetch updated config");
+    }
+
+    return result;
+  } catch (error) {
+    console.error("Failed to update config:", error);
+    throw new Error("Failed to update insight config");
+  }
+}
+
+/**
  * Delete an insights config and all associated data
  */
 export async function deleteConfig(configId: string): Promise<void> {

@@ -3,11 +3,13 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { InsightDetailHeader } from "@/components/insight-detail-header";
+import { EditConfigDialog } from "@/components/edit-config-dialog";
 import { CategoriesView } from "@/components/categories-view";
-import { getConfig, getTopologyStats } from "@/services/insights";
+import { getConfig, getTopologyStats, updateConfig } from "@/services/insights";
 import type { InsightsConfig, TopologyStats } from "@/types/insights";
 import { ArrowLeft, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { toast } from "sonner";
 
 export default function InsightDetail() {
   const { configId } = useParams<{ configId: string }>();
@@ -16,6 +18,7 @@ export default function InsightDetail() {
   const [stats, setStats] = useState<TopologyStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   useEffect(() => {
     loadConfig();
@@ -46,6 +49,27 @@ export default function InsightDetail() {
       setError("Failed to load insight details");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleUpdate = async (updates: Partial<InsightsConfig>) => {
+    if (!configId) return;
+
+    try {
+      // Call API to persist changes
+      await updateConfig(configId, updates);
+
+      // Fetch fresh data to ensure consistency
+      const updatedConfig = await getConfig(configId);
+      if (updatedConfig) {
+        setConfig(updatedConfig);
+      }
+
+      toast.success("Configuration updated successfully");
+    } catch (err) {
+      console.error("Failed to update config:", err);
+      toast.error("Failed to save changes. Please try again.");
+      throw err;
     }
   };
 
@@ -91,13 +115,27 @@ export default function InsightDetail() {
 
       {/* Content */}
       {!isLoading && !error && config && (
-        <div className="space-y-8">
-          {/* Config Header */}
-          <InsightDetailHeader config={config} stats={stats || undefined} />
+        <>
+          <div className="space-y-8">
+            {/* Config Header */}
+            <InsightDetailHeader
+              config={config}
+              stats={stats || undefined}
+              onEditClick={() => setIsEditDialogOpen(true)}
+            />
 
-          {/* Categories and Subcategories */}
-          <CategoriesView configId={config.key} />
-        </div>
+            {/* Categories and Subcategories */}
+            <CategoriesView configId={config.key} />
+          </div>
+
+          {/* Edit Dialog */}
+          <EditConfigDialog
+            open={isEditDialogOpen}
+            onOpenChange={setIsEditDialogOpen}
+            config={config}
+            onSave={handleUpdate}
+          />
+        </>
       )}
     </div>
   );

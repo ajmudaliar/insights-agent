@@ -13,14 +13,16 @@ import {
   FolderIcon,
   LayersIcon,
   MessageSquareIcon,
+  Pencil,
 } from "lucide-react";
 
 interface InsightDetailHeaderProps {
   config: InsightsConfig;
   stats?: TopologyStats;
+  onEditClick: () => void;
 }
 
-export function InsightDetailHeader({ config, stats }: InsightDetailHeaderProps) {
+export function InsightDetailHeader({ config, stats, onEditClick }: InsightDetailHeaderProps) {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
   const formatDate = (dateString: string) => {
@@ -49,10 +51,26 @@ export function InsightDetailHeader({ config, stats }: InsightDetailHeaderProps)
     <>
       <div className="space-y-5">
         {/* Header */}
-        <div className="flex-1 space-y-3">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">{config.analytical_question}</h1>
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1 space-y-3">
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+              {config.analytical_question}
+            </h1>
 
-          <p className="text-sm text-muted-foreground/80 leading-relaxed">{config.agent_description}</p>
+            <p className="text-sm text-muted-foreground/80 leading-relaxed">
+              {config.agent_description}
+            </p>
+          </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onEditClick}
+            className="gap-2 shrink-0"
+          >
+            <Pencil className="h-4 w-4" />
+            Edit
+          </Button>
         </div>
 
         {/* Primary metadata row */}
