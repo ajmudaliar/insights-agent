@@ -20,6 +20,8 @@ export const InsightsConfigsTable = new Table({
     clustering_focus: z.string().describe("Natural language description of what to cluster on"),
     agent_description: z.string().describe("Original input: description of what the bot does"),
     analytical_question: z.string().describe("Original input: what insights are being sought"),
+    domain_context: z.string().optional().describe("Domain-specific context about business, products, users, terminology.'"),
+    categorization_guidance: z.string().optional().describe("User guidance on how to approach category generation.'"),
     created_at: z.string().describe("ISO timestamp when config was created"),
   },
 });

@@ -187,7 +187,12 @@ Focus: ${config.clustering_focus}
 
 PARENT CATEGORY: ${category.name}
 What this category reveals: ${category.summary}
+${config.domain_context ? `
+DOMAIN KNOWLEDGE:
+${config.domain_context}
 
+Use this domain knowledge to better understand the conversation context, recognize domain-specific entities, and accurately assess which subcategory best captures the specific insight this conversation provides.
+` : ''}
 SUBCATEGORIES (each represents a more specific insight within this category):
 ${subcategoryOptions}
 

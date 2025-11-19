@@ -185,7 +185,18 @@ ANALYSIS CONTEXT:
 
 PARENT CATEGORY: ${category.name}
 What this category reveals about the analytical question: ${category.summary}
+${config.domain_context ? `
+DOMAIN KNOWLEDGE:
+${config.domain_context}
 
+Use this domain knowledge to better understand the conversations and identify subcategory patterns that are meaningful in this specific business context. This will help you recognize domain-specific entities, terminology, and user segments when forming subcategories.
+` : ''}${config.categorization_guidance ? `
+CATEGORIZATION APPROACH:
+The user has provided specific guidance on how to approach categorization:
+${config.categorization_guidance}
+
+Apply this guidance when discovering and framing subcategories within this parent category. Your subcategories should align with this approach.
+` : ''}
 CONVERSATIONS IN THIS CATEGORY (${features.length} conversations):
 ${semanticStringsText}
 
@@ -197,7 +208,7 @@ Your subcategories should:
 1. Break down the parent category's insight into more specific, actionable patterns
 2. Each reveal a different facet of how these conversations answer the analytical question
 3. Focus on: ${config.clustering_focus}
-4. Be meaningfully distinct from each other
+4. Be meaningfully distinct from each other${config.categorization_guidance ? '\n5. Follow the categorization approach specified above' : ''}
 
 For each subcategory:
 - Provide a clear, concise name (2-4 words)

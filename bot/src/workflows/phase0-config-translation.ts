@@ -14,6 +14,8 @@ export const GenerateInsightsConfig = new Workflow({
   input: z.object({
     agent_description: z.string().describe("Description of what the target bot does"),
     analytical_question: z.string().describe("What insights you want to discover (e.g., 'Why are users frustrated?')"),
+    domain_context: z.string().max(1000).optional().describe("Domain-specific context about business, products, users, terminology. Max 1000 characters."),
+    categorization_guidance: z.string().max(1000).optional().describe("How to approach category generation. Max 1000 characters."),
   }),
   output: z.object({
     configId: z.string(),
@@ -33,8 +35,12 @@ export const GenerateInsightsConfig = new Workflow({
 **Bot Description:** ${input.agent_description}
 
 **Analytical Question:** ${input.analytical_question}
-
-Generate a comprehensive configuration that will help answer the analytical question.`;
+${input.domain_context ? `
+**Domain Context:** ${input.domain_context}
+` : ''}${input.categorization_guidance ? `
+**Categorization Approach:** When analyzing conversations, they should be categorized using the following approach: ${input.categorization_guidance}
+` : ''}
+Generate a comprehensive configuration that will help answer the analytical question.${input.domain_context ? ' Consider the domain context when determining what features and attributes to extract' : ''}${input.categorization_guidance ? ' Ensure the clustering_focus aligns with the specified categorization approach, and consider whether any attributes should be generated to support this categorization strategy.' : ''}`;
 
       // Define the schema for extraction
       const configSchema = z.object({
@@ -46,7 +52,7 @@ Generate a comprehensive configuration that will help answer the analytical ques
         extract_features: z
           .array(z.string())
           .describe(
-            "List of 3-5 specific features to extract from conversations (e.g., 'product_mentions', 'feature_references', 'question_intent_type', 'error_mentions', 'integration_requests'). These are semantic features that help identify usage patterns."
+            "List of 3-5 specific features to extract from conversations (e.g., 'product_mentions', 'feature_references', 'question_intent_type', 'error_mentions', 'integration_requests'). These are semantic features that help identify usage patterns. If domain context is provided, consider generating domain-specific features based on that knowledge."
           ),
         attributes: z
           .array(
@@ -61,12 +67,12 @@ Generate a comprehensive configuration that will help answer the analytical ques
             })
           )
           .describe(
-            "List of 3-5 attributes to extract from conversations that will help answer the analytical question"
+            "List of 3-5 attributes to extract from conversations that will help answer the analytical question. If domain context is provided, consider generating attributes based on user segments, business metrics, or domain-specific categorizations mentioned in the context."
           ),
         clustering_focus: z
           .string()
           .describe(
-            "In 1-2 sentences, describe what aspect of conversations should be used to group them together when answering the analytical question"
+            "In 1-2 sentences, describe what aspect of conversations should be used to group them together when answering the analytical question. If a categorization approach was provided, ensure this aligns with that approach."
           ),
       });
 
@@ -90,6 +96,8 @@ Generate a comprehensive configuration that will help answer the analytical ques
             clustering_focus: config.clustering_focus,
             agent_description: input.agent_description,
             analytical_question: input.analytical_question,
+            domain_context: input.domain_context,
+            categorization_guidance: input.categorization_guidance,
             created_at: createdAt,
           },
         ],

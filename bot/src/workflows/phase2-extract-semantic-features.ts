@@ -16,6 +16,8 @@ export const ExtractSemanticFeatures = new Workflow({
       extract_features: z.array(z.string()),
       attributes: z.array(z.any()),
       clustering_focus: z.string(),
+      domain_context: z.string().optional(),
+      categorization_guidance: z.string().optional(),
     }),
     conversationIds: z.array(z.string()).describe("List of conversation IDs to process"),
   }),
@@ -68,7 +70,21 @@ export const ExtractSemanticFeatures = new Workflow({
             ),
         });
 
-        const extractedData = await adk.zai.with({ modelId: "best" }).extract(transcript, extractionSchema);
+        const extractedData = await adk.zai.with({ modelId: "best" }).extract(
+          transcript,
+          extractionSchema,
+          input.config.domain_context ? {
+            instructions: `DOMAIN KNOWLEDGE:
+${input.config.domain_context}
+
+Use this domain knowledge to better understand the conversation and extract features and attributes accurately. This will help you:
+- Recognize domain-specific entities (competitors, products, technical terms, user segments)
+- Understand context-specific meanings and terminology
+- Accurately categorize and extract information based on domain norms
+
+Now extract the requested features and attributes from the conversation transcript.`
+          } : undefined
+        );
 
         // Apply filter attributes - exclude conversation if any filter_by boolean attribute is false
         const shouldExclude = input.config.attributes.some((attr: any) => {

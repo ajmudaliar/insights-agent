@@ -118,7 +118,12 @@ export const AssignConversationsToCategories = new Workflow({
 
 Agent: ${config.agent_description}
 Focus: ${config.clustering_focus}
+${config.domain_context ? `
+DOMAIN KNOWLEDGE:
+${config.domain_context}
 
+Use this domain knowledge to better understand the conversation context, recognize domain-specific entities, and accurately assess which category best captures the insight this conversation provides.
+` : ''}
 CATEGORIES (each represents a way to answer the analytical question):
 ${categoryOptions}
 

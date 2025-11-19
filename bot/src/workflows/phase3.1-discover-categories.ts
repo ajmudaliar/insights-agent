@@ -106,7 +106,18 @@ CONTEXT:
 - Agent Description: ${config.agent_description}
 - Analytical Question: ${config.analytical_question}
 - Analysis Focus: ${config.clustering_focus}
+${config.domain_context ? `
+DOMAIN KNOWLEDGE:
+${config.domain_context}
 
+Use this domain knowledge to better understand the conversations and identify patterns that are meaningful in this specific business context. This will help you recognize domain-specific entities, terminology, and user segments when forming categories.
+` : ''}${config.categorization_guidance ? `
+CATEGORIZATION APPROACH:
+The user has provided specific guidance on how to approach categorization:
+${config.categorization_guidance}
+
+Follow this guidance when discovering and framing categories. Your categories should align with this approach.
+` : ''}
 CONVERSATIONS (structured features):
 ${semanticStringsText}
 
@@ -119,7 +130,7 @@ Your categories should:
 2. Focus specifically on: ${config.clustering_focus}
 3. Reveal actionable insights and clear patterns
 4. Group conversations with similar intents, features, topics, outcomes, and attributes
-5. Be specific enough to be actionable, but broad enough to group multiple conversations
+5. Be specific enough to be actionable, but broad enough to group multiple conversations${config.categorization_guidance ? '\n6. Follow the categorization approach specified above' : ''}
 
 For each category:
 - Provide a clear, concise name (2-4 words)
