@@ -109,24 +109,28 @@ export const AssignConversationsToCategories = new Workflow({
             .max(categories.length)
             .describe("The index of the best matching category (1-based)"),
           confidence: z.number().min(0).max(1).describe("Confidence score for this assignment (0.0 to 1.0)"),
-          reasoning: z.string().max(200).describe("Brief explanation for why this category was chosen"),
+          reasoning: z.string().max(500).describe("Brief explanation of how this conversation helps answer the analytical question via this category. Focus on the insight it provides, not just category fit."),
         });
 
         // Use LLM to assign conversation to category based on full transcript
         const assignment = await adk.zai.with({ modelId: "best" }).extract(feature.transcript, assignmentSchema, {
-          instructions: `Categorize this conversation to answer: "${config.analytical_question}"
+          instructions: `Your task is to determine how this conversation helps answer the analytical question: "${config.analytical_question}"
 
 Agent: ${config.agent_description}
 Focus: ${config.clustering_focus}
 
-CATEGORIES:
+CATEGORIES (each represents a way to answer the analytical question):
 ${categoryOptions}
 
 Quick Summary: ${feature.semantic_string}
 
-Select the best matching category based on user intent, conversation outcome, and alignment with the focus area above.
+IMPORTANT: Select the category that best captures what this conversation reveals about the analytical question. Don't just match topics - think about what insight this conversation provides.
 
-Provide confidence (0.0-1.0) and brief reasoning.`,
+In your reasoning (keep it concise, around 300-400 characters), explain:
+- What this conversation reveals about the analytical question
+- Why this category is the right lens to understand that insight
+
+Provide confidence (0.0-1.0) and brief reasoning focused on answering the analytical question.`,
         });
 
         // Convert 1-based index to 0-based and get category ID

@@ -150,8 +150,8 @@ export const DiscoverSubcategories = new Workflow({
                   name: z.string().describe("Subcategory name (2-4 words)"),
                   summary: z
                     .string()
-                    .describe("Brief summary of what this subcategory represents (1-2 sentences)")
-                    .max(200),
+                    .describe("Brief summary explaining how conversations in this subcategory help answer the analytical question. Frame the summary in terms of the specific insight this subcategory reveals within the parent category context.")
+                    .max(500),
                   representative_indices: z
                     .array(z.number())
                     .describe("Indices of 2-5 most representative conversations from the list (1-based indexing)")
@@ -164,7 +164,7 @@ export const DiscoverSubcategories = new Workflow({
           });
 
           const result = await adk.zai.with({ modelId: "best" }).extract(semanticStringsText, subcategoriesSchema, {
-            instructions: `You are analyzing conversations within a specific category to discover subcategories.
+            instructions: `You are analyzing conversations within a specific category to discover more specific patterns that answer the analytical question.
 
 ANALYSIS CONTEXT:
 - Agent: ${config.agent_description}
@@ -172,28 +172,34 @@ ANALYSIS CONTEXT:
 - Clustering Focus: ${config.clustering_focus}
 
 PARENT CATEGORY: ${category.name}
-Description: ${category.summary}
+What this category reveals about the analytical question: ${category.summary}
 
 CONVERSATIONS IN THIS CATEGORY (${features.length} conversations):
 ${semanticStringsText}
 
 ---
 
-TASK: Identify ${input.maxSubcategoriesPerCategory} distinct subcategories within "${category.name}" that:
-1. Break down this category into more specific, actionable patterns
-2. Stay aligned with: ${config.clustering_focus}
-3. Help answer: ${config.analytical_question}
-4. Each subcategory should represent a meaningfully different variation within this category
+TASK: Within the "${category.name}" category, identify ${input.maxSubcategoriesPerCategory} distinct subcategories that provide more specific insights about the analytical question: "${config.analytical_question}"
+
+Your subcategories should:
+1. Break down the parent category's insight into more specific, actionable patterns
+2. Each reveal a different facet of how these conversations answer the analytical question
+3. Focus on: ${config.clustering_focus}
+4. Be meaningfully distinct from each other
 
 For each subcategory:
 - Provide a clear, concise name (2-4 words)
-- Write a brief summary explaining what distinguishes this subcategory
+- Write a brief summary that explains what specific insight about the analytical question this subcategory reveals (within the context of the parent category). Don't just describe the subcategory - explain how it helps answer the question.
 - Select 2-5 representative conversation indices (1-based) that best exemplify this subcategory
+
+Example: If parent category is "Users seeking content about advanced integrations" and analytical question is "What topics are users asking about that we don't have content for?"
+- BAD subcategory summary: "Questions about database integrations"
+- GOOD subcategory summary: "Users requesting documentation on connecting external SQL databases and NoSQL stores, which is not covered in our current integration guides"
 
 Make sure subcategories are:
 - More specific than the parent category
 - Mutually distinct within this category
-- Relevant to the clustering focus`,
+- Framed as specific answers to the analytical question`,
           });
 
           return result;

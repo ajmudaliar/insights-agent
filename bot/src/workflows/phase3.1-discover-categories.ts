@@ -86,8 +86,8 @@ export const DiscoverCategories = new Workflow({
               name: z.string().describe("Category name (2-4 words)"),
               summary: z
                 .string()
-                .describe("Brief summary of what this category represents (1-2 sentences)")
-                .max(200),
+                .describe("Brief summary explaining how conversations in this category help answer the analytical question (1-2 sentences). Frame the summary in terms of the question being asked.")
+                .max(500),
               representative_indices: z
                 .array(z.number())
                 .describe("Indices of 5-10 most representative conversations from the list (1-based indexing)")
@@ -112,22 +112,28 @@ ${semanticStringsText}
 
 ---
 
-TASK: Identify ${input.maxTopLevelCategories} distinct categories that:
-1. Directly answer the analytical question: "${config.analytical_question}"
+TASK: Identify ${input.maxTopLevelCategories} distinct categories that directly answer the analytical question: "${config.analytical_question}"
+
+Your categories should:
+1. Be framed entirely around answering the analytical question
 2. Focus specifically on: ${config.clustering_focus}
 3. Reveal actionable insights and clear patterns
 4. Group conversations with similar intents, features, topics, outcomes, and attributes
-5. Are specific enough to be actionable, but broad enough to group multiple conversations
+5. Be specific enough to be actionable, but broad enough to group multiple conversations
 
 For each category:
 - Provide a clear, concise name (2-4 words)
-- Write a brief summary explaining what the category represents
+- Write a brief summary that explicitly connects this category to the analytical question. The summary should explain what insight about the analytical question this category reveals, NOT just describe what's in the category.
 - Select 5-10 representative conversation indices (using 1-based indexing) that best exemplify this category
+
+Example: If the analytical question is "What topics are users asking about that we don't have content for?"
+- BAD summary: "Questions about integrations and data sources"
+- GOOD summary: "Users seeking content about advanced integration features (external databases, ADK) that our documentation doesn't adequately cover"
 
 Make sure categories are:
 - Mutually distinct (minimal overlap)
 - Comprehensive (cover major patterns in the data)
-- Aligned with the analytical question and focus`,
+- Framed as answers to the analytical question, not just descriptive labels`,
       });
 
       return result;
