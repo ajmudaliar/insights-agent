@@ -23,9 +23,9 @@ export const DiscoverAndAssignTopology = new Workflow({
   timeout: "180m",
   input: z.object({
     configId: z.string().describe("Config ID from Phase 0"),
-    maxTopLevelCategories: z.number().min(3).max(10).default(5).describe("Maximum number of top-level categories"),
+    maxTopLevelCategories: z.number().min(2).max(10).default(5).describe("Maximum number of top-level categories"),
     minCategorySize: z.number().min(3).default(3).describe("Minimum conversations to generate subcategories"),
-    maxSubcategoriesPerCategory: z.number().min(2).max(10).default(5).describe("Maximum subcategories per category"),
+    maxSubcategoriesPerCategory: z.number().min(0).max(10).default(5).describe("Maximum subcategories per category (0 to skip subcategories)"),
   }),
   output: z.object({
     configId: z.string(),
@@ -75,6 +75,23 @@ export const DiscoverAndAssignTopology = new Workflow({
 
     // Wait for Phase 3.2 to complete and get results
     const { output: phase32Result } = await step.waitForWorkflow("assign_conversations_to_categories", phase32Id);
+
+    // Skip subcategories if maxSubcategoriesPerCategory is 0
+    if (input.maxSubcategoriesPerCategory === 0) {
+      return {
+        configId: input.configId,
+        categories: {
+          total_discovered: phase31Result.categories.length,
+          total_conversations_assigned: phase32Result.total_conversations,
+          statistics: phase32Result.category_statistics,
+        },
+        subcategories: {
+          total_discovered: 0,
+          total_conversations_assigned: 0,
+          categories_with_subcategories: 0,
+        },
+      };
+    }
 
     // Phase 3.3: Discover subcategories within each category
     const phase33Id = await step("discover-subcategories", async () => {

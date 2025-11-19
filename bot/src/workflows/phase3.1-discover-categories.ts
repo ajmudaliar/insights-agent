@@ -24,7 +24,7 @@ export const DiscoverCategories = new Workflow({
   timeout: "30m",
   input: z.object({
     configId: z.string().describe("Config ID for tracking which config was used"),
-    maxTopLevelCategories: z.number().min(3).max(10).default(5).describe("Maximum number of top-level categories to discover"),
+    maxTopLevelCategories: z.number().min(2).max(10).default(5).describe("Maximum number of top-level categories to discover"),
   }),
   output: z.object({
     categories: z.array(
@@ -95,7 +95,7 @@ export const DiscoverCategories = new Workflow({
                 .max(10),
             })
           )
-          .min(3)
+          .min(input.maxTopLevelCategories)
           .max(input.maxTopLevelCategories),
       });
 

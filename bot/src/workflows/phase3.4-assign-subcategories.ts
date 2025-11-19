@@ -72,14 +72,22 @@ export const AssignConversationsToSubcategories = new Workflow({
         limit: 500, // Adjust based on expected subcategory count
       });
 
-      if (rows.length === 0) {
-        throw new Error(
-          `No subcategories found for config ${input.configId}. Please run Phase 3.3 (discover-subcategories) first.`
-        );
-      }
-
       return rows;
     });
+
+    // Early return if no subcategories exist (likely maxSubcategoriesPerCategory was set to 0)
+    if (allSubcategories.length === 0) {
+      return {
+        total_conversations_assigned: 0,
+        total_subcategories: 0,
+        subcategory_statistics: [],
+        save_result: {
+          warnings: [
+            "No subcategories found. This is expected if maxSubcategoriesPerCategory was set to 0. Otherwise, please run Phase 3.3 (discover-subcategories) first.",
+          ],
+        },
+      };
+    }
 
     // Step 3: Group subcategories by category_id
     const subcategoriesByCategory = allSubcategories.reduce(

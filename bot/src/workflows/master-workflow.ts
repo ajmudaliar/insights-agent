@@ -19,9 +19,9 @@ export const MasterWorkflow = new Workflow({
     configId: z.string().describe("Config ID from Phase 0"),
     sampleSize: z.number().min(1).max(500).default(100).describe("Number of conversations to sample"),
     maxNumberOfMessages: z.number().min(1).max(100).default(50).describe("Maximum messages to fetch per conversation"),
-    maxTopLevelCategories: z.number().min(3).max(10).default(5).describe("Maximum number of top-level categories"),
+    maxTopLevelCategories: z.number().min(2).max(10).default(5).describe("Maximum number of top-level categories"),
     minCategorySize: z.number().min(3).default(3).describe("Minimum conversations to generate subcategories"),
-    maxSubcategoriesPerCategory: z.number().min(2).max(10).default(5).describe("Maximum subcategories per category"),
+    maxSubcategoriesPerCategory: z.number().min(0).max(10).default(5).describe("Maximum subcategories per category (0 to skip subcategories)"),
   }),
   output: z.object({
     configId: z.string(),

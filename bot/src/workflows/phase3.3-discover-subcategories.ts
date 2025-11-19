@@ -34,10 +34,10 @@ export const DiscoverSubcategories = new Workflow({
       .describe("Minimum number of conversations required to generate subcategories"),
     maxSubcategoriesPerCategory: z
       .number()
-      .min(2)
+      .min(0)
       .max(10)
       .default(5)
-      .describe("Maximum number of subcategories to discover per category"),
+      .describe("Maximum number of subcategories to discover per category (0 to skip subcategories)"),
   }),
   output: z.object({
     categories_processed: z.number(),
@@ -62,6 +62,18 @@ export const DiscoverSubcategories = new Workflow({
     }),
   }),
   handler: async ({ input, step }) => {
+    // Early return if subcategories are disabled
+    if (input.maxSubcategoriesPerCategory === 0) {
+      return {
+        categories_processed: 0,
+        total_subcategories_created: 0,
+        subcategories_by_category: [],
+        save_result: {
+          warnings: ["Subcategory discovery skipped: maxSubcategoriesPerCategory is set to 0"],
+        },
+      };
+    }
+
     // Step 1: Load config for context
     const config = await step("load-config", async () => {
       const { rows } = await InsightsConfigsTable.findRows({
