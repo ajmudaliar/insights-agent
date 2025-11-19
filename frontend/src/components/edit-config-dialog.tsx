@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -135,12 +136,35 @@ export function EditConfigDialog({ open, onOpenChange, config, onSave }: EditCon
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-0 gap-0">
-        <DialogHeader className="px-6 pt-6 pb-4 border-b">
+      <DialogContent className="max-w-4xl max-h-[85vh] p-0 gap-0 overflow-hidden flex flex-col">
+        <DialogHeader className="px-6 pt-6 pb-4 shrink-0">
           <DialogTitle className="text-lg font-medium">Edit Configuration</DialogTitle>
         </DialogHeader>
 
-        <div className="px-6 py-6 space-y-8 overflow-y-auto">
+        <Tabs defaultValue="basic" className="flex-1 flex flex-col overflow-hidden">
+          <TabsList className="w-full justify-start rounded-none border-b bg-transparent px-6 h-12 p-0">
+            <TabsTrigger
+              value="basic"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 h-12"
+            >
+              Basic Info
+            </TabsTrigger>
+            <TabsTrigger
+              value="features"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 h-12"
+            >
+              Features
+            </TabsTrigger>
+            <TabsTrigger
+              value="attributes"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 h-12"
+            >
+              Attributes
+            </TabsTrigger>
+          </TabsList>
+
+          <div className="flex-1 overflow-y-auto">
+            <TabsContent value="basic" className="px-6 py-6 space-y-8 mt-0">
           {/* Analytical Question */}
           <div className="space-y-3">
             <Label htmlFor="analytical_question" className="text-sm font-medium text-foreground">
@@ -213,6 +237,9 @@ export function EditConfigDialog({ open, onOpenChange, config, onSave }: EditCon
             />
           </div>
 
+            </TabsContent>
+
+            <TabsContent value="features" className="px-6 py-6 space-y-8 mt-0">
           {/* Extract Features */}
           <div className="space-y-3">
             <Label className="text-sm font-medium text-foreground">Extract Features</Label>
@@ -265,6 +292,9 @@ export function EditConfigDialog({ open, onOpenChange, config, onSave }: EditCon
             </div>
           </div>
 
+            </TabsContent>
+
+            <TabsContent value="attributes" className="px-6 py-6 space-y-8 mt-0">
           {/* Attributes */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -362,14 +392,17 @@ export function EditConfigDialog({ open, onOpenChange, config, onSave }: EditCon
             </div>
           </div>
 
-          {error && (
-            <div className="text-sm text-destructive bg-destructive/5 border border-destructive/20 p-3 rounded-lg">
-              {error}
-            </div>
-          )}
-        </div>
+            </TabsContent>
+          </div>
+        </Tabs>
 
-        <DialogFooter className="px-6 py-4 border-t bg-muted/30">
+        {error && (
+          <div className="px-6 py-3 text-sm text-destructive bg-destructive/5 border-t border-destructive/20">
+            {error}
+          </div>
+        )}
+
+        <DialogFooter className="px-6 py-4 border-t bg-muted/30 shrink-0">
           <div className="flex justify-end gap-2 w-full">
             <Button
               variant="ghost"

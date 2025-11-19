@@ -52,7 +52,7 @@ export function AppHeader() {
   };
 
   return (
-    <header className="flex h-14 items-center gap-4 border-b bg-gradient-to-r from-white/60 to-zinc-50/60 px-4">
+    <header className="flex h-14 items-center gap-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-6">
       <SidebarTrigger />
 
       <Breadcrumb>
