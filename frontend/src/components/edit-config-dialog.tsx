@@ -136,7 +136,7 @@ export function EditConfigDialog({ open, onOpenChange, config, onSave }: EditCon
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[85vh] p-0 gap-0 overflow-hidden flex flex-col">
+      <DialogContent className="sm:max-w-5xl max-h-[85vh] p-0 gap-0 overflow-hidden flex flex-col w-full">
         <DialogHeader className="px-6 pt-6 pb-4 shrink-0">
           <DialogTitle className="text-lg font-medium">Edit Configuration</DialogTitle>
         </DialogHeader>
