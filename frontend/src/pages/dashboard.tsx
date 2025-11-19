@@ -1,4 +1,4 @@
-import { CreateInsightSheet } from "@/components/create-insight-sheet";
+import { CreateInsightDialog } from "@/components/create-insight-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -14,7 +14,7 @@ export default function Dashboard() {
   const [configs, setConfigs] = useState<InsightsConfig[]>([]);
   const [statsMap, setStatsMap] = useState<Record<string, TopologyStats>>({});
   const [isLoading, setIsLoading] = useState(true);
-  const [sheetOpen, setSheetOpen] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   const loadConfigs = async () => {
     try {
@@ -105,7 +105,7 @@ export default function Dashboard() {
             Analyze conversations and discover patterns with AI-powered insights
           </p>
         </div>
-        <Button onClick={() => setSheetOpen(true)} size="default" className="gap-2">
+        <Button onClick={() => setDialogOpen(true)} size="default" className="gap-2">
           <Plus className="h-4 w-4" />
           New Insight
         </Button>
@@ -142,7 +142,7 @@ export default function Dashboard() {
             Create your first insight to start analyzing conversations and discovering patterns in your bot
             interactions.
           </p>
-          <Button onClick={() => setSheetOpen(true)} size="default" className="gap-2">
+          <Button onClick={() => setDialogOpen(true)} size="default" className="gap-2">
             <Plus className="h-4 w-4" />
             Create Your First Insight
           </Button>
@@ -205,8 +205,8 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Create Sheet */}
-      <CreateInsightSheet open={sheetOpen} onOpenChange={setSheetOpen} onSuccess={handleSuccess} />
+      {/* Create Dialog */}
+      <CreateInsightDialog open={dialogOpen} onOpenChange={setDialogOpen} onSuccess={handleSuccess} />
     </div>
   );
 }

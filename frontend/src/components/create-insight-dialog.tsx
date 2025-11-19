@@ -1,15 +1,7 @@
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import {
-  Sheet,
-  SheetClose,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { createInsight } from "@/services/insights";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -31,13 +23,13 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
-interface CreateInsightSheetProps {
+interface CreateInsightDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
 }
 
-export function CreateInsightSheet({ open, onOpenChange, onSuccess }: CreateInsightSheetProps) {
+export function CreateInsightDialog({ open, onOpenChange, onSuccess }: CreateInsightDialogProps) {
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -79,37 +71,41 @@ export function CreateInsightSheet({ open, onOpenChange, onSuccess }: CreateInsi
   };
 
   return (
-    <Sheet open={open} onOpenChange={handleClose}>
-      <SheetContent>
-        <SheetHeader>
-          <SheetTitle>Create New Insight</SheetTitle>
-          <SheetDescription>Configure your analysis parameters to generate an insight configuration.</SheetDescription>
-        </SheetHeader>
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-2xl p-0 gap-0 overflow-hidden flex flex-col">
+        <DialogHeader className="px-6 pt-6 pb-4 shrink-0">
+          <DialogTitle className="text-lg font-medium">Create New Insight</DialogTitle>
+        </DialogHeader>
 
         {error && (
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
+          <div className="px-6">
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          </div>
         )}
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col h-full">
-            <div className="grid flex-1 auto-rows-min gap-6 px-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1">
+            <div className="space-y-6 px-6 py-4">
               <FormField
                 control={form.control}
                 name="analytical_question"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Analytical Question</FormLabel>
+                  <FormItem className="space-y-3">
+                    <FormLabel className="text-sm font-medium text-foreground">Analytical Question</FormLabel>
                     <FormControl>
                       <Textarea
                         placeholder="e.g., What issues cause users to abandon conversations?"
                         disabled={isCreating}
+                        className="resize-none text-sm min-h-[80px]"
                         {...field}
                       />
                     </FormControl>
-                    <FormDescription>What insights do you want to discover from your conversations?</FormDescription>
+                    <FormDescription className="text-xs text-muted-foreground">
+                      What insights do you want to discover from your conversations?
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -119,42 +115,46 @@ export function CreateInsightSheet({ open, onOpenChange, onSuccess }: CreateInsi
                 control={form.control}
                 name="agent_description"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Agent Description</FormLabel>
+                  <FormItem className="space-y-3">
+                    <FormLabel className="text-sm font-medium text-foreground">Agent Description</FormLabel>
                     <FormControl>
                       <Textarea
                         placeholder="e.g., A customer support bot helping users with product questions and troubleshooting..."
                         disabled={isCreating}
+                        className="resize-none text-sm min-h-[100px]"
                         {...field}
                       />
                     </FormControl>
-                    <FormDescription>Describe what your bot does and how it helps users</FormDescription>
+                    <FormDescription className="text-xs text-muted-foreground">
+                      Describe what your bot does and how it helps users
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
               />
             </div>
 
-            <SheetFooter className="border-t pt-4">
-              <Button type="submit" disabled={isCreating}>
-                {isCreating ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Creating...
-                  </>
-                ) : (
-                  "Create Insight"
-                )}
-              </Button>
-              <SheetClose asChild>
-                <Button type="button" variant="outline" disabled={isCreating}>
+            <DialogFooter className="px-6 py-4 border-t bg-muted/30 shrink-0">
+              <div className="flex justify-end gap-2 w-full">
+                <Button 
+                  type="button" 
+                  variant="ghost" 
+                  disabled={isCreating} 
+                  onClick={handleClose}
+                  className="h-9"
+                >
                   Cancel
                 </Button>
-              </SheetClose>
-            </SheetFooter>
+                <Button type="submit" disabled={isCreating} className="h-9 gap-2">
+                  {isCreating && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  {isCreating ? "Creating..." : "Create Insight"}
+                </Button>
+              </div>
+            </DialogFooter>
           </form>
         </Form>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }
+
