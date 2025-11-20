@@ -11,6 +11,8 @@ const targetClient = getTargetBotClient({ workspaceId: TARGET_BOT_WORKSPACE_ID, 
 export async function createInsight(input: {
   agent_description: string;
   analytical_question: string;
+  domain_context?: string;
+  categorization_guidance?: string;
 }): Promise<{ configId: string }> {
   try {
     const { workflow } = await client.getOrCreateWorkflow({
@@ -269,6 +271,7 @@ export async function updateConfig(
 
     // Merge updates with current config
     const updatedConfig = {
+      id: currentConfig.id,
       key: configId,
       agent_description: updates.agent_description ?? currentConfig.agent_description,
       analytical_question: updates.analytical_question ?? currentConfig.analytical_question,
@@ -276,6 +279,8 @@ export async function updateConfig(
       extract_features: updates.extract_features ?? currentConfig.extract_features,
       attributes: updates.attributes ?? currentConfig.attributes,
       clustering_focus: updates.clustering_focus ?? currentConfig.clustering_focus,
+      domain_context: updates.domain_context ?? currentConfig.domain_context,
+      categorization_guidance: updates.categorization_guidance ?? currentConfig.categorization_guidance,
       created_at: currentConfig.created_at,
     };
 
