@@ -15,10 +15,12 @@ export async function createInsight(input: {
   categorization_guidance?: string;
 }): Promise<{ configId: string }> {
   try {
+    const uniqueId = `${Date.now()}_${Math.random().toString(36).substring(7)}`;
     const { workflow } = await client.getOrCreateWorkflow({
       name: "config_translation",
       status: "pending",
-      tags: { configType: "insights" },
+      tags: { uniqueId },
+      discriminateByTags: ["uniqueId"],
       input,
     });
 
@@ -287,10 +289,12 @@ export async function updateConfig(
       oversample_multiplier: updates.oversample_multiplier ?? currentConfig.oversample_multiplier,
       start_date: updates.start_date ?? currentConfig.start_date,
       end_date: updates.end_date ?? currentConfig.end_date,
-      max_messages_per_conversation: updates.max_messages_per_conversation ?? currentConfig.max_messages_per_conversation,
+      max_messages_per_conversation:
+        updates.max_messages_per_conversation ?? currentConfig.max_messages_per_conversation,
       max_top_level_categories: updates.max_top_level_categories ?? currentConfig.max_top_level_categories,
       min_category_size: updates.min_category_size ?? currentConfig.min_category_size,
-      max_subcategories_per_category: updates.max_subcategories_per_category ?? currentConfig.max_subcategories_per_category,
+      max_subcategories_per_category:
+        updates.max_subcategories_per_category ?? currentConfig.max_subcategories_per_category,
     };
 
     // Upsert the config
@@ -389,14 +393,9 @@ export async function getMessages(conversationId: string): Promise<Message[]> {
 /**
  * Fetch conversation with all its messages
  */
-export async function getConversationWithMessages(
-  conversationId: string
-): Promise<ConversationWithMessages | null> {
+export async function getConversationWithMessages(conversationId: string): Promise<ConversationWithMessages | null> {
   try {
-    const [conversation, messages] = await Promise.all([
-      getConversation(conversationId),
-      getMessages(conversationId),
-    ]);
+    const [conversation, messages] = await Promise.all([getConversation(conversationId), getMessages(conversationId)]);
 
     if (!conversation) {
       return null;
@@ -408,6 +407,45 @@ export async function getConversationWithMessages(
     };
   } catch (error) {
     console.error("Failed to get conversation with messages:", error);
+    return null;
+  }
+}
+
+// Workflow status type
+export type WorkflowStatus = {
+  id: string;
+  status: "pending" | "in_progress" | "listening" | "completed" | "failed" | "timedout" | "cancelled" | "paused";
+};
+
+export async function startMasterWorkflow(configId: string): Promise<{ workflowId: string }> {
+  const uniqueId = `${configId}_${Date.now()}`;
+  const { workflow } = await client.getOrCreateWorkflow({
+    name: "master_workflow",
+    status: "pending",
+    tags: { configId, uniqueId },
+    discriminateByTags: ["uniqueId"],
+    input: { configId },
+  });
+  return { workflowId: workflow.id };
+}
+
+export async function getMasterWorkflowStatus(configId: string): Promise<WorkflowStatus | null> {
+  const { workflows } = await client.listWorkflows({
+    name: "master_workflow",
+    tags: { configId },
+  });
+
+  if (workflows.length === 0) return null;
+
+  const w = workflows[0];
+  return { id: w.id, status: w.status };
+}
+
+export async function getWorkflowById(workflowId: string): Promise<WorkflowStatus | null> {
+  try {
+    const { workflow: w } = await client.getWorkflow({ id: workflowId });
+    return { id: w.id, status: w.status };
+  } catch {
     return null;
   }
 }

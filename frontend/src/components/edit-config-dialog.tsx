@@ -494,14 +494,13 @@ export function EditConfigDialog({ open, onOpenChange, config, onSave }: EditCon
                           </TooltipContent>
                         </Tooltip>
                       </div>
-                      <div className="flex gap-2">
+                      <div className="grid grid-cols-2 gap-2">
                         <Button
                           type="button"
                           variant={formData.sampling_mode === "stratified" ? "default" : "outline"}
                           size="sm"
                           onClick={() => setFormData({ ...formData, sampling_mode: "stratified" })}
                           disabled={isSaving}
-                          className="flex-1"
                         >
                           Stratified
                         </Button>
@@ -511,7 +510,6 @@ export function EditConfigDialog({ open, onOpenChange, config, onSave }: EditCon
                           size="sm"
                           onClick={() => setFormData({ ...formData, sampling_mode: "date_range" })}
                           disabled={isSaving}
-                          className="flex-1"
                         >
                           Date Range
                         </Button>
@@ -540,8 +538,9 @@ export function EditConfigDialog({ open, onOpenChange, config, onSave }: EditCon
                               type="number"
                               min={50}
                               max={500}
-                              value={formData.sample_size ?? 100}
-                              onChange={(e) => setFormData({ ...formData, sample_size: parseInt(e.target.value) || undefined })}
+                              value={formData.sample_size ?? ""}
+                              onChange={(e) => setFormData({ ...formData, sample_size: e.target.value ? parseInt(e.target.value) : undefined })}
+                              placeholder="100"
                               disabled={isSaving}
                               className="h-9"
                             />
@@ -563,8 +562,9 @@ export function EditConfigDialog({ open, onOpenChange, config, onSave }: EditCon
                               type="number"
                               min={3}
                               max={10}
-                              value={formData.oversample_multiplier ?? 5}
-                              onChange={(e) => setFormData({ ...formData, oversample_multiplier: parseInt(e.target.value) || undefined })}
+                              value={formData.oversample_multiplier ?? ""}
+                              onChange={(e) => setFormData({ ...formData, oversample_multiplier: e.target.value ? parseInt(e.target.value) : undefined })}
+                              placeholder="5"
                               disabled={isSaving}
                               className="h-9"
                             />
@@ -673,7 +673,7 @@ export function EditConfigDialog({ open, onOpenChange, config, onSave }: EditCon
                           value={formData.max_messages_per_conversation}
                           onChange={(e) => setFormData({ ...formData, max_messages_per_conversation: parseInt(e.target.value) || 50 })}
                           disabled={isSaving}
-                          className="h-9 max-w-xs"
+                          className="h-9"
                         />
                       </div>
                     </div>

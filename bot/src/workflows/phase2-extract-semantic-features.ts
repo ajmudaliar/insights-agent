@@ -24,6 +24,7 @@ export const ExtractSemanticFeatures = new Workflow({
     total_processed: z.number().describe("Total conversations processed"),
     total_included: z.number().describe("Conversations included in results"),
     total_excluded: z.number().describe("Conversations excluded by filter_by attributes"),
+    total_failed: z.number().describe("Conversations that failed to process"),
     save_to_table_result: z.any(),
   }),
   handler: async ({ input, step }) => {
@@ -31,8 +32,9 @@ export const ExtractSemanticFeatures = new Workflow({
       "extract-and-save-conversation-features",
       input.conversationIds,
       async (conversationId) => {
-        const messages = await fetchLastNMessages(conversationId, 100);
-        const transcript = generateTranscript(messages);
+        try {
+          const messages = await fetchLastNMessages(conversationId, 100);
+          const transcript = generateTranscript(messages);
 
         // Build the extraction schema with all required fields
         const extractionSchema = z.object({
@@ -151,24 +153,29 @@ Now extract the requested features and attributes from the conversation transcri
           errors: saveResult.errors,
           warnings: saveResult.warnings,
         };
+        } catch (error) {
+          return { failed: true, conversationId, error: String(error) };
+        }
       },
       { concurrency: 10, maxAttempts: 2 }
     );
 
-    // Calculate statistics and aggregate save results
+    // Calculate statistics
     const total_processed = input.conversationIds.length;
-    const total_excluded = allResults.filter((r) => r.excluded).length;
-    const total_included = total_processed - total_excluded;
+    const total_failed = allResults.filter((r) => "failed" in r && r.failed).length;
+    const total_excluded = allResults.filter((r) => "excluded" in r && r.excluded).length;
+    const total_included = total_processed - total_excluded - total_failed;
 
-    // Aggregate errors and warnings from all saves
-    const allErrors = allResults.filter((r) => !r.excluded && r.errors).flatMap((r) => r.errors!);
-
-    const allWarnings = allResults.filter((r) => !r.excluded && r.warnings).flatMap((r) => r.warnings!);
+    // Aggregate errors and warnings from successful saves
+    const successResults = allResults.filter((r) => !("failed" in r) && !("excluded" in r && r.excluded));
+    const allErrors = successResults.filter((r) => "errors" in r && r.errors).flatMap((r: any) => r.errors);
+    const allWarnings = successResults.filter((r) => "warnings" in r && r.warnings).flatMap((r: any) => r.warnings);
 
     return {
       total_processed,
       total_included,
       total_excluded,
+      total_failed,
       save_to_table_result: {
         errors: allErrors.length > 0 ? allErrors : undefined,
         warnings: allWarnings.length > 0 ? allWarnings : undefined,

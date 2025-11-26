@@ -1,10 +1,11 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { InsightDetailHeader } from "@/components/insight-detail-header";
 import { EditConfigDialog } from "@/components/edit-config-dialog";
 import { CategoriesView } from "@/components/categories-view";
+import { WorkflowStatusBanner } from "@/components/workflow-status-banner";
 import { getConfig, getTopologyStats, updateConfig } from "@/services/insights";
 import type { InsightsConfig, TopologyStats } from "@/types/insights";
 import { ArrowLeft, AlertCircle } from "lucide-react";
@@ -20,11 +21,7 @@ export default function InsightDetail() {
   const [error, setError] = useState<string | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
-  useEffect(() => {
-    loadConfig();
-  }, [configId]);
-
-  const loadConfig = async () => {
+  const loadConfig = useCallback(async () => {
     if (!configId) {
       setError("No config ID provided");
       setIsLoading(false);
@@ -50,7 +47,19 @@ export default function InsightDetail() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [configId]);
+
+  useEffect(() => {
+    loadConfig();
+  }, [loadConfig]);
+
+  const handleWorkflowComplete = useCallback(async () => {
+    // Refresh stats when workflow completes
+    if (configId) {
+      const statsData = await getTopologyStats(configId);
+      setStats(statsData);
+    }
+  }, [configId]);
 
   const handleUpdate = async (updates: Partial<InsightsConfig>) => {
     if (!configId) return;
@@ -116,12 +125,18 @@ export default function InsightDetail() {
       {/* Content */}
       {!isLoading && !error && config && (
         <>
-          <div className="space-y-8">
+          <div className="space-y-6">
             {/* Config Header */}
             <InsightDetailHeader
               config={config}
               stats={stats || undefined}
               onEditClick={() => setIsEditDialogOpen(true)}
+            />
+
+            {/* Workflow Status */}
+            <WorkflowStatusBanner
+              configId={config.key}
+              onWorkflowComplete={handleWorkflowComplete}
             />
 
             {/* Categories and Subcategories */}
