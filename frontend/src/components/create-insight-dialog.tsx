@@ -20,8 +20,8 @@ const formSchema = z.object({
     .string()
     .min(10, "Analytical question must be at least 10 characters")
     .max(500, "Analytical question must be less than 500 characters"),
-  domain_context: z.string().max(1000).optional(),
-  categorization_guidance: z.string().max(1000).optional(),
+  domain_context: z.string().max(5000).optional(),
+  categorization_guidance: z.string().max(5000).optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;

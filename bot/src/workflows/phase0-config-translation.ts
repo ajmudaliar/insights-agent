@@ -14,8 +14,8 @@ export const GenerateInsightsConfig = new Workflow({
   input: z.object({
     agent_description: z.string().describe("Description of what the target bot does"),
     analytical_question: z.string().describe("What insights you want to discover (e.g., 'Why are users frustrated?')"),
-    domain_context: z.string().max(1000).optional().describe("Domain-specific context about business, products, users, terminology. Max 1000 characters."),
-    categorization_guidance: z.string().max(1000).optional().describe("How to approach category generation. Max 1000 characters."),
+    domain_context: z.string().max(5000).optional().describe("Domain-specific context about business, products, users, terminology. Max 5000 characters."),
+    categorization_guidance: z.string().max(5000).optional().describe("How to approach category generation. Max 5000 characters."),
   }),
   output: z.object({
     configId: z.string(),

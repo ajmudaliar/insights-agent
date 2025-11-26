@@ -24,4 +24,5 @@ export const InsightsConfigsTable = new Table({
     categorization_guidance: z.string().optional().describe("User guidance on how to approach category generation.'"),
     created_at: z.string().describe("ISO timestamp when config was created"),
   },
+  factor: 10,
 });
