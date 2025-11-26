@@ -63,6 +63,8 @@ export const fetchConversations = async (nextToken?: string) => {
   const client = getTargetBotClient();
   const result = await client.listConversations({
     nextToken: nextToken,
+    sortField: "updatedAt",
+    sortDirection: "desc",
   });
 
   return {
