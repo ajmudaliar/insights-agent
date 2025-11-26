@@ -275,7 +275,6 @@ export async function updateConfig(
       key: configId,
       agent_description: updates.agent_description ?? currentConfig.agent_description,
       analytical_question: updates.analytical_question ?? currentConfig.analytical_question,
-      summary_prompt: updates.summary_prompt ?? currentConfig.summary_prompt,
       extract_features: updates.extract_features ?? currentConfig.extract_features,
       attributes: updates.attributes ?? currentConfig.attributes,
       clustering_focus: updates.clustering_focus ?? currentConfig.clustering_focus,

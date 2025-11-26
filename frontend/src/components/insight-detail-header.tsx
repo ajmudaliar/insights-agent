@@ -133,17 +133,6 @@ export function InsightDetailHeader({ config, stats, onEditClick }: InsightDetai
           </CollapsibleTrigger>
 
           <CollapsibleContent className="space-y-4 pt-2">
-            {/* Summary Prompt */}
-            {config.summary_prompt && (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-                  <Activity className="h-3 w-3" />
-                  <span>Summary Prompt</span>
-                </div>
-                <p className="text-xs text-muted-foreground/70 leading-relaxed pl-5">{config.summary_prompt}</p>
-              </div>
-            )}
-
             {/* Clustering Focus */}
             {config.clustering_focus && (
               <div className="space-y-2">

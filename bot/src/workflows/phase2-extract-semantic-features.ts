@@ -12,7 +12,6 @@ export const ExtractSemanticFeatures = new Workflow({
   input: z.object({
     configId: z.string().describe("Config ID for tracking which config was used"),
     config: z.object({
-      summary_prompt: z.string(),
       extract_features: z.array(z.string()),
       attributes: z.array(z.any()),
       clustering_focus: z.string(),

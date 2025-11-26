@@ -28,7 +28,6 @@ export function EditConfigDialog({ open, onOpenChange, config, onSave }: EditCon
   const [formData, setFormData] = useState({
     analytical_question: config.analytical_question,
     agent_description: config.agent_description,
-    summary_prompt: config.summary_prompt || "",
     clustering_focus: config.clustering_focus || "",
     domain_context: config.domain_context || "",
     categorization_guidance: config.categorization_guidance || "",
@@ -46,7 +45,6 @@ export function EditConfigDialog({ open, onOpenChange, config, onSave }: EditCon
       setFormData({
         analytical_question: config.analytical_question,
         agent_description: config.agent_description,
-        summary_prompt: config.summary_prompt || "",
         clustering_focus: config.clustering_focus || "",
         domain_context: config.domain_context || "",
         categorization_guidance: config.categorization_guidance || "",
@@ -234,23 +232,6 @@ export function EditConfigDialog({ open, onOpenChange, config, onSave }: EditCon
                     />
                   </div>
 
-                  {/* Summary Prompt */}
-                  <div className="space-y-3">
-                    <Label htmlFor="summary_prompt" className="text-sm font-medium text-foreground">
-                      Summary Prompt
-                    </Label>
-                    <Textarea
-                      id="summary_prompt"
-                      value={formData.summary_prompt}
-                      onChange={(e) =>
-                        setFormData({ ...formData, summary_prompt: e.target.value })
-                      }
-                      placeholder="Prompt for generating conversation summaries"
-                      rows={4}
-                      disabled={isSaving}
-                      className="resize-none text-sm"
-                    />
-                  </div>
                 </div>
 
                 {/* Guidance Sidebar */}

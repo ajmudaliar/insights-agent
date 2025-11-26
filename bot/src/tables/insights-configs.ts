@@ -9,7 +9,6 @@ export const InsightsConfigsTable = new Table({
   description: "Configuration for insights analysis",
   columns: {
     key: z.string().describe("Unique identifier for the config"),
-    summary_prompt: z.string().describe("Template for generating conversation summaries"),
     extract_features: z.array(z.string()).describe("List of specific features to extract from conversations (e.g., 'product_mentions', 'feature_references', 'question_intent_type')"),
     attributes: z.array(z.object({
       name: z.string(),

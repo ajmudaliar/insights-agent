@@ -9,7 +9,6 @@ export type InsightsConfig = {
   key: string; // This is the configId (e.g., "cfg_1763068133453_kf7c7")
   agent_description: string;
   analytical_question: string;
-  summary_prompt: string;
   domain_context?: string;
   categorization_guidance?: string;
   extract_features: string[];

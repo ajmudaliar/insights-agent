@@ -20,7 +20,6 @@ export const GenerateInsightsConfig = new Workflow({
   output: z.object({
     configId: z.string(),
     config: z.object({
-      summary_prompt: z.string(),
       extract_features: z.array(z.string()),
       attributes: z.array(z.any()),
       clustering_focus: z.string(),
@@ -44,11 +43,6 @@ Generate a comprehensive configuration that will help answer the analytical ques
 
       // Define the schema for extraction
       const configSchema = z.object({
-        summary_prompt: z
-          .string()
-          .describe(
-            "A prompt template for summarizing individual conversations. Include what information to extract from the conversation transcript that relates to the analytical question. Keep it concise (2-3 sentences)."
-          ),
         extract_features: z
           .array(z.string())
           .describe(
@@ -90,7 +84,6 @@ Generate a comprehensive configuration that will help answer the analytical ques
         rows: [
           {
             key: configId,
-            summary_prompt: config.summary_prompt,
             extract_features: config.extract_features,
             attributes: config.attributes,
             clustering_focus: config.clustering_focus,
@@ -110,7 +103,6 @@ Generate a comprehensive configuration that will help answer the analytical ques
     return {
       configId,
       config: {
-        summary_prompt: config.summary_prompt,
         extract_features: config.extract_features,
         attributes: config.attributes,
         clustering_focus: config.clustering_focus,

@@ -230,7 +230,7 @@ sequenceDiagram
 
     Bot->>LLM: Extract structured config from NL<br/>(agent desc, question, domain, guidance)
     activate LLM
-    LLM-->>Bot: Structured config:<br/>- summary_prompt<br/>- extract_features[]<br/>- attributes[]<br/>- clustering_focus
+    LLM-->>Bot: Structured config:<br/>- extract_features[]<br/>- attributes[]<br/>- clustering_focus
     deactivate LLM
 
     Bot->>DB: Save InsightsConfig
@@ -425,7 +425,6 @@ Stores analysis configuration translated from natural language.
 | Field | Type | Description |
 |-------|------|-------------|
 | `key` | string | Config ID (e.g., "cfg_1763068133453_kf7c7") |
-| `summary_prompt` | string | Template for summarizing conversations |
 | `extract_features` | string[] | Features to extract (e.g., "product_mentions") |
 | `attributes` | object[] | Custom attributes (categorical/numerical/boolean) |
 | `clustering_focus` | string | What aspect to categorize on |

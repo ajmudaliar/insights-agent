@@ -30,7 +30,7 @@ sequenceDiagram
 
     Bot->>LLM: Extract structured config from NL<br/>(agent desc, question, domain, guidance)
     activate LLM
-    LLM-->>Bot: Structured config:<br/>- summary_prompt<br/>- extract_features[]<br/>- attributes[]<br/>- clustering_focus
+    LLM-->>Bot: Structured config:<br/>- extract_features[]<br/>- attributes[]<br/>- clustering_focus
     deactivate LLM
 
     Bot->>DB: Save InsightsConfig
