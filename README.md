@@ -15,7 +15,7 @@ It analyzes conversations from your Botpress bot, automatically discovers meanin
 ## Key Features
 
 - **Natural Language Configuration**: Describe your bot and analytical goals in plain English
-- **Stratified Sampling**: Intelligent conversation sampling that prevents single-turn bias
+- **Flexible Sampling**: Stratified sampling by length or date range selection
 - **LLM-Based Pattern Discovery**: Automatic category and subcategory discovery using Claude
 - **Hierarchical Organization**: Two-level taxonomy (categories → subcategories)
 - **Confidence Tracking**: Every assignment includes confidence scores and reasoning
@@ -49,7 +49,8 @@ insights-agent-v3/
 │   │   ├── workflows/           # Long-running analysis workflows
 │   │   │   ├── master-workflow.ts
 │   │   │   ├── phase0-config-translation.ts
-│   │   │   ├── phase1-sample-conversations.ts
+│   │   │   ├── phase1-sample-stratified.ts
+│   │   │   ├── phase1-sample-date-range.ts
 │   │   │   ├── phase2-extract-semantic-features.ts
 │   │   │   └── phase3-*.ts     # Category/subcategory discovery & assignment
 │   │   └── utils/              # Utilities (sampling, transcripts, API clients)
@@ -89,24 +90,62 @@ The system operates through a multi-phase pipeline that transforms raw conversat
 
 ---
 
-### Phase 1: Stratified Conversation Sampling
+### Phase 1: Conversation Sampling
 
-**Goal:** Get a representative sample of conversations, avoiding over-representation of short/single-turn chats
+Two sampling modes are available:
+
+#### Stratified Sampling (`sample_stratified`)
+
+**Goal:** Get a representative sample weighted toward longer, more informative conversations.
 
 **Process:**
-1. Oversample conversations (3× target sample size)
-2. Bucket by length:
+1. Oversample conversations (configurable multiplier, default 5×)
+2. Bucket by message count:
    - Single-turn (1 message): Weight 0.5×
    - Short (2-5 messages): Weight 1.0×
    - Medium (6-10 messages): Weight 1.5×
    - Long (11+ messages): Weight 2.0×
-3. Calculate proportional distribution based on weights
-4. Random sample from each bucket
-5. Redistribute remaining quota to high-value buckets
+3. Sample proportionally from each bucket
+4. Redistribute remaining quota to high-weight buckets
 
-**Output:** List of conversation IDs with stratification statistics
+**Input:**
+```json
+{
+  "maxConversations": 100,
+  "oversampleMultiplier": 5,
+  "maxMessagesPerConversation": 100
+}
+```
 
-**Why Stratification?** Ensures longer, more informative conversations are adequately represented despite being less frequent.
+**Output:** Conversation IDs + bucket statistics
+
+#### Date Range Sampling (`sample_date_range`)
+
+**Goal:** Fetch all conversations within a specific time period.
+
+**Process:**
+1. Iterate through conversations sorted by `updatedAt` (desc)
+2. Include conversations where `updatedAt` falls within range
+3. Skip empty conversations (0 messages)
+
+**Input:**
+```json
+{
+  "startDate": "2025-11-19T00:00:00Z",
+  "endDate": "2025-11-19T23:59:59Z",
+  "maxMessagesPerConversation": 100
+}
+```
+
+**Output:** Conversation IDs + skip statistics
+
+#### Common Output Statistics
+
+Both modes report:
+- `total_fetched`: Conversations retrieved from API
+- `skipped_empty`: Conversations with 0 messages
+- `skipped_failed`: Conversations that failed to fetch
+- `total_sampled`: Final count included in sample
 
 ---
 
@@ -198,10 +237,39 @@ Discover and assign a two-level taxonomy: **Categories → Subcategories**
 ### Master Workflow Orchestration
 
 All phases are orchestrated by the `master_workflow` which:
+- Selects sampling mode (stratified or date range)
 - Executes phases sequentially
 - Passes results between phases
 - Provides aggregate statistics
 - Runs with 4-hour timeout
+
+**Input (stratified mode):**
+```json
+{
+  "configId": "cfg_xxx",
+  "samplingMode": "stratified",
+  "sampleSize": 100,
+  "oversampleMultiplier": 5,
+  "maxNumberOfMessages": 50,
+  "maxTopLevelCategories": 5,
+  "minCategorySize": 3,
+  "maxSubcategoriesPerCategory": 5
+}
+```
+
+**Input (date range mode):**
+```json
+{
+  "configId": "cfg_xxx",
+  "samplingMode": "date_range",
+  "startDate": "2025-11-19T00:00:00Z",
+  "endDate": "2025-11-19T23:59:59Z",
+  "maxNumberOfMessages": 50,
+  "maxTopLevelCategories": 5,
+  "minCategorySize": 3,
+  "maxSubcategoriesPerCategory": 5
+}
+```
 
 **Complete Pipeline:**
 ```
@@ -586,12 +654,19 @@ Extracted features and semantic representations.
 
 ## Key Concepts
 
-### Stratified Sampling
-Prevents bias toward short conversations by:
-- Bucketing by message count
-- Applying length-based weights
-- Sampling proportionally
-- Ensuring diverse conversation types
+### Sampling Modes
+
+**Stratified Sampling** - Prevents bias toward short conversations:
+- Buckets by message count (single-turn, short, medium, long)
+- Applies length-based weights (0.5× to 2.0×)
+- Samples proportionally from each bucket
+- Best for: General analysis across all conversations
+
+**Date Range Sampling** - Analyzes specific time periods:
+- Fetches all conversations within start/end dates
+- Filters by `updatedAt` timestamp
+- No sampling or weighting applied
+- Best for: Investigating specific incidents, daily/weekly analysis
 
 ### LLM-Based Discovery
 Unlike traditional clustering (k-means, DBSCAN), this system:

@@ -1,5 +1,6 @@
 import { Workflow, z } from "@botpress/runtime";
-import { GenerateConversationSummaries as SampleConversationsWorkflow } from "./phase1-sample-conversations";
+import { SampleStratified } from "./phase1-sample-stratified";
+import { SampleDateRange } from "./phase1-sample-date-range";
 import { ExtractSemanticFeatures as ExtractSemanticFeaturesWorkflow } from "./phase2-extract-semantic-features";
 import { DiscoverAndAssignTopology as DiscoverAndAssignTopologyWorkflow } from "./phase3-discover-and-assign-topology";
 import { InsightsConfigsTable } from "../tables/insights-configs";
@@ -7,7 +8,7 @@ import { InsightsConfigsTable } from "../tables/insights-configs";
 /**
  * Master Workflow: Orchestrates Complete Insights Pipeline
  *
- * Phase 1: Sample conversations using stratified sampling
+ * Phase 1: Sample conversations (stratified or date range)
  * Phase 2: Extract semantic features from conversations
  * Phase 3: Discover hierarchical topology and assign conversations
  */
@@ -17,15 +18,36 @@ export const MasterWorkflow = new Workflow({
   timeout: "240m",
   input: z.object({
     configId: z.string().describe("Config ID from Phase 0"),
-    sampleSize: z.number().min(1).max(500).default(100).describe("Number of conversations to sample"),
+
+    // Sampling mode
+    samplingMode: z
+      .enum(["stratified", "date_range"])
+      .default("stratified")
+      .describe("How to select conversations"),
+
+    // Stratified mode options
+    sampleSize: z.number().min(1).max(500).default(100).describe("[stratified] Number of conversations to sample"),
+    oversampleMultiplier: z.number().min(1).max(10).default(5).describe("[stratified] Multiplier for oversampling"),
+
+    // Date range mode options
+    startDate: z.string().optional().describe("[date_range] Start date (ISO string, inclusive)"),
+    endDate: z.string().optional().describe("[date_range] End date (ISO string, inclusive)"),
+
+    // Common options
     maxNumberOfMessages: z.number().min(1).max(100).default(50).describe("Maximum messages to fetch per conversation"),
     maxTopLevelCategories: z.number().min(2).max(10).default(5).describe("Maximum number of top-level categories"),
     minCategorySize: z.number().min(3).default(3).describe("Minimum conversations to generate subcategories"),
-    maxSubcategoriesPerCategory: z.number().min(0).max(10).default(5).describe("Maximum subcategories per category (0 to skip subcategories)"),
+    maxSubcategoriesPerCategory: z.number().min(0).max(10).default(5).describe("Maximum subcategories per category (0 to skip)"),
   }),
   output: z.object({
     configId: z.string(),
-    conversations_sampled: z.number(),
+    sampling: z.object({
+      mode: z.enum(["stratified", "date_range"]),
+      total_fetched: z.number(),
+      skipped_empty: z.number(),
+      skipped_failed: z.number(),
+      total_sampled: z.number(),
+    }),
     features_extracted: z.object({
       total_processed: z.number(),
       total_included: z.number(),
@@ -53,18 +75,62 @@ export const MasterWorkflow = new Workflow({
     });
 
     // Phase 1: Sample conversations
-    const phase1Id = await step("sample-conversations", async () => {
-      const { id } = await SampleConversationsWorkflow.getOrCreate({
-        input: {
-          maxConversations: input.sampleSize,
-          maxMessagesPerConversation: input.maxNumberOfMessages,
-        },
-      });
-      return id;
-    });
+    let conversationIds: string[];
+    let samplingStats: {
+      mode: "stratified" | "date_range";
+      total_fetched: number;
+      skipped_empty: number;
+      skipped_failed: number;
+      total_sampled: number;
+    };
 
-    // Wait for Phase 1 to complete and get results
-    const { output: phase1Result } = await step.waitForWorkflow("sample_conversations", phase1Id);
+    if (input.samplingMode === "date_range") {
+      if (!input.startDate || !input.endDate) {
+        throw new Error("date_range mode requires startDate and endDate");
+      }
+
+      const phase1Id = await step("sample-date-range", async () => {
+        const { id } = await SampleDateRange.getOrCreate({
+          input: {
+            startDate: input.startDate!,
+            endDate: input.endDate!,
+            maxMessagesPerConversation: input.maxNumberOfMessages,
+          },
+        });
+        return id;
+      });
+
+      const { output: result } = await step.waitForWorkflow("sample_date_range", phase1Id);
+      conversationIds = result.conversationIds;
+      samplingStats = {
+        mode: "date_range",
+        total_fetched: result.stats.total_fetched,
+        skipped_empty: result.stats.skipped_empty,
+        skipped_failed: result.stats.skipped_failed,
+        total_sampled: result.stats.total_sampled,
+      };
+    } else {
+      const phase1Id = await step("sample-stratified", async () => {
+        const { id } = await SampleStratified.getOrCreate({
+          input: {
+            maxConversations: input.sampleSize,
+            oversampleMultiplier: input.oversampleMultiplier,
+            maxMessagesPerConversation: input.maxNumberOfMessages,
+          },
+        });
+        return id;
+      });
+
+      const { output: result } = await step.waitForWorkflow("sample_stratified", phase1Id);
+      conversationIds = result.conversationIds;
+      samplingStats = {
+        mode: "stratified",
+        total_fetched: result.stats.total_fetched,
+        skipped_empty: result.stats.skipped_empty,
+        skipped_failed: result.stats.skipped_failed,
+        total_sampled: result.stats.total_sampled,
+      };
+    }
 
     // Phase 2: Extract semantic features and generate embeddings
     const phase2Id = await step("extract-semantic-features", async () => {
@@ -72,13 +138,12 @@ export const MasterWorkflow = new Workflow({
         input: {
           configId: input.configId,
           config: config,
-          conversationIds: phase1Result.conversationIds,
+          conversationIds: conversationIds,
         },
       });
       return id;
     });
 
-    // Wait for Phase 2 to complete and get results
     const { output: phase2Result } = await step.waitForWorkflow("extract_semantic_features", phase2Id);
 
     // Phase 3: Discover topology and assign conversations
@@ -94,12 +159,11 @@ export const MasterWorkflow = new Workflow({
       return id;
     });
 
-    // Wait for Phase 3 to complete and get results
     const { output: phase3Result } = await step.waitForWorkflow("discover_and_assign_topology", phase3Id);
 
     return {
       configId: input.configId,
-      conversations_sampled: phase1Result.stratification.total_sampled,
+      sampling: samplingStats,
       features_extracted: {
         total_processed: phase2Result.total_processed,
         total_included: phase2Result.total_included,
