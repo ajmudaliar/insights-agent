@@ -7,8 +7,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, X, Plus } from "lucide-react";
+import { Loader2, X, Plus, Info } from "lucide-react";
 import type { InsightsConfig } from "@/types/insights";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 type Attribute = {
   name: string;
@@ -33,6 +34,16 @@ export function EditConfigDialog({ open, onOpenChange, config, onSave }: EditCon
     categorization_guidance: config.categorization_guidance || "",
     extract_features: config.extract_features || [],
     attributes: config.attributes || [],
+    // Workflow params
+    sampling_mode: config.sampling_mode || "stratified",
+    sample_size: config.sample_size,
+    oversample_multiplier: config.oversample_multiplier,
+    start_date: config.start_date || "",
+    end_date: config.end_date || "",
+    max_messages_per_conversation: config.max_messages_per_conversation || 50,
+    max_top_level_categories: config.max_top_level_categories || 5,
+    min_category_size: config.min_category_size || 3,
+    max_subcategories_per_category: config.max_subcategories_per_category || 5,
   });
 
   const [newFeature, setNewFeature] = useState("");
@@ -50,6 +61,16 @@ export function EditConfigDialog({ open, onOpenChange, config, onSave }: EditCon
         categorization_guidance: config.categorization_guidance || "",
         extract_features: config.extract_features || [],
         attributes: config.attributes || [],
+        // Workflow params
+        sampling_mode: config.sampling_mode || "stratified",
+        sample_size: config.sample_size,
+        oversample_multiplier: config.oversample_multiplier,
+        start_date: config.start_date || "",
+        end_date: config.end_date || "",
+        max_messages_per_conversation: config.max_messages_per_conversation || 50,
+        max_top_level_categories: config.max_top_level_categories || 5,
+        min_category_size: config.min_category_size || 3,
+        max_subcategories_per_category: config.max_subcategories_per_category || 5,
       });
       setError(null);
     }
@@ -163,6 +184,12 @@ export function EditConfigDialog({ open, onOpenChange, config, onSave }: EditCon
                 className="flex-1 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 h-12"
               >
                 Attributes
+              </TabsTrigger>
+              <TabsTrigger
+                value="workflow"
+                className="flex-1 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 h-12"
+              >
+                Workflow
               </TabsTrigger>
               <TabsTrigger
                 value="advanced"
@@ -443,6 +470,321 @@ export function EditConfigDialog({ open, onOpenChange, config, onSave }: EditCon
             </div>
           </div>
 
+            </TabsContent>
+
+            <TabsContent value="workflow" className="p-0 mt-0 h-full">
+              <TooltipProvider>
+                <div className="flex h-full">
+                  {/* Form Fields Column */}
+                  <div className="flex-1 px-6 py-6 space-y-6 overflow-y-auto">
+                    {/* Sampling Mode */}
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Label className="text-sm font-medium text-foreground">Sampling Mode</Label>
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                          </TooltipTrigger>
+                          <TooltipContent side="right" className="max-w-xs">
+                            <p className="text-xs">
+                              <strong>Stratified:</strong> Samples conversations weighted by length for diverse representation.
+                              <br /><br />
+                              <strong>Date Range:</strong> Fetches all conversations within a specific time period.
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          variant={formData.sampling_mode === "stratified" ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setFormData({ ...formData, sampling_mode: "stratified" })}
+                          disabled={isSaving}
+                          className="flex-1"
+                        >
+                          Stratified
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={formData.sampling_mode === "date_range" ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setFormData({ ...formData, sampling_mode: "date_range" })}
+                          disabled={isSaving}
+                          className="flex-1"
+                        >
+                          Date Range
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Stratified-specific fields */}
+                    {formData.sampling_mode === "stratified" && (
+                      <div className="space-y-4 p-4 border rounded-lg bg-muted/20">
+                        <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Stratified Sampling</h4>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <Label htmlFor="sample_size" className="text-sm">Sample Size</Label>
+                              <Tooltip>
+                                <TooltipTrigger>
+                                  <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                                </TooltipTrigger>
+                                <TooltipContent side="right" className="max-w-xs">
+                                  <p className="text-xs">Number of conversations to sample (50-500). Higher values give more comprehensive analysis but take longer.</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </div>
+                            <Input
+                              id="sample_size"
+                              type="number"
+                              min={50}
+                              max={500}
+                              value={formData.sample_size ?? 100}
+                              onChange={(e) => setFormData({ ...formData, sample_size: parseInt(e.target.value) || undefined })}
+                              disabled={isSaving}
+                              className="h-9"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <Label htmlFor="oversample_multiplier" className="text-sm">Oversample Multiplier</Label>
+                              <Tooltip>
+                                <TooltipTrigger>
+                                  <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                                </TooltipTrigger>
+                                <TooltipContent side="right" className="max-w-xs">
+                                  <p className="text-xs">Fetch this many times the sample size, then stratify. Higher values improve diversity (3-10).</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </div>
+                            <Input
+                              id="oversample_multiplier"
+                              type="number"
+                              min={3}
+                              max={10}
+                              value={formData.oversample_multiplier ?? 5}
+                              onChange={(e) => setFormData({ ...formData, oversample_multiplier: parseInt(e.target.value) || undefined })}
+                              disabled={isSaving}
+                              className="h-9"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Date Range-specific fields */}
+                    {formData.sampling_mode === "date_range" && (
+                      <div className="space-y-4 p-4 border rounded-lg bg-muted/20">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Date Range</h4>
+                          <div className="flex gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                const now = new Date();
+                                const yesterday = new Date(now);
+                                yesterday.setDate(yesterday.getDate() - 1);
+                                yesterday.setHours(0, 0, 0, 0);
+                                now.setHours(23, 59, 59, 999);
+                                setFormData({
+                                  ...formData,
+                                  start_date: yesterday.toISOString(),
+                                  end_date: now.toISOString(),
+                                });
+                              }}
+                              disabled={isSaving}
+                              className="h-7 text-xs"
+                            >
+                              Last Day
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                const now = new Date();
+                                const weekAgo = new Date(now);
+                                weekAgo.setDate(weekAgo.getDate() - 7);
+                                weekAgo.setHours(0, 0, 0, 0);
+                                now.setHours(23, 59, 59, 999);
+                                setFormData({
+                                  ...formData,
+                                  start_date: weekAgo.toISOString(),
+                                  end_date: now.toISOString(),
+                                });
+                              }}
+                              disabled={isSaving}
+                              className="h-7 text-xs"
+                            >
+                              Last Week
+                            </Button>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="start_date" className="text-sm">Start Date</Label>
+                            <Input
+                              id="start_date"
+                              type="datetime-local"
+                              value={formData.start_date ? formData.start_date.slice(0, 16) : ""}
+                              onChange={(e) => setFormData({ ...formData, start_date: e.target.value ? new Date(e.target.value).toISOString() : "" })}
+                              disabled={isSaving}
+                              className="h-9"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="end_date" className="text-sm">End Date</Label>
+                            <Input
+                              id="end_date"
+                              type="datetime-local"
+                              value={formData.end_date ? formData.end_date.slice(0, 16) : ""}
+                              onChange={(e) => setFormData({ ...formData, end_date: e.target.value ? new Date(e.target.value).toISOString() : "" })}
+                              disabled={isSaving}
+                              className="h-9"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Common workflow params */}
+                    <div className="space-y-4">
+                      <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Conversation Processing</h4>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Label htmlFor="max_messages" className="text-sm">Max Messages per Conversation</Label>
+                          <Tooltip>
+                            <TooltipTrigger>
+                              <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                            </TooltipTrigger>
+                            <TooltipContent side="right" className="max-w-xs">
+                              <p className="text-xs">Maximum messages to analyze per conversation (20-200). Higher values capture more context but increase processing time.</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
+                        <Input
+                          id="max_messages"
+                          type="number"
+                          min={20}
+                          max={200}
+                          value={formData.max_messages_per_conversation}
+                          onChange={(e) => setFormData({ ...formData, max_messages_per_conversation: parseInt(e.target.value) || 50 })}
+                          disabled={isSaving}
+                          className="h-9 max-w-xs"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Category params */}
+                    <div className="space-y-4">
+                      <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Category Settings</h4>
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <Label htmlFor="max_categories" className="text-sm">Max Categories</Label>
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                              </TooltipTrigger>
+                              <TooltipContent side="right" className="max-w-xs">
+                                <p className="text-xs">Maximum top-level categories to discover (3-10). Use more for diverse bots, fewer for focused ones.</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </div>
+                          <Input
+                            id="max_categories"
+                            type="number"
+                            min={3}
+                            max={10}
+                            value={formData.max_top_level_categories}
+                            onChange={(e) => setFormData({ ...formData, max_top_level_categories: parseInt(e.target.value) || 5 })}
+                            disabled={isSaving}
+                            className="h-9"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <Label htmlFor="min_category_size" className="text-sm">Min Category Size</Label>
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                              </TooltipTrigger>
+                              <TooltipContent side="right" className="max-w-xs">
+                                <p className="text-xs">Minimum conversations needed to create subcategories (2-10).</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </div>
+                          <Input
+                            id="min_category_size"
+                            type="number"
+                            min={2}
+                            max={10}
+                            value={formData.min_category_size}
+                            onChange={(e) => setFormData({ ...formData, min_category_size: parseInt(e.target.value) || 3 })}
+                            disabled={isSaving}
+                            className="h-9"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <Label htmlFor="max_subcategories" className="text-sm">Max Subcategories</Label>
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                              </TooltipTrigger>
+                              <TooltipContent side="right" className="max-w-xs">
+                                <p className="text-xs">Maximum subcategories per category (0-10). Set to 0 to skip subcategory generation.</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </div>
+                          <Input
+                            id="max_subcategories"
+                            type="number"
+                            min={0}
+                            max={10}
+                            value={formData.max_subcategories_per_category}
+                            onChange={(e) => setFormData({ ...formData, max_subcategories_per_category: parseInt(e.target.value) || 0 })}
+                            disabled={isSaving}
+                            className="h-9"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Guidance Sidebar */}
+                  <div className="w-[350px] border-l bg-muted/10 px-6 py-6 space-y-6 overflow-y-auto hidden md:block">
+                    <div className="bg-card border rounded-lg p-4 shadow-sm space-y-4">
+                      <div>
+                        <h4 className="text-sm font-semibold text-foreground mb-1">Workflow Parameters</h4>
+                        <p className="text-xs text-muted-foreground mb-3">
+                          These settings control how conversations are sampled and categorized when running the analysis.
+                        </p>
+                      </div>
+
+                      <div className="pt-3 border-t border-border/50 space-y-3">
+                        <div className="space-y-1">
+                          <span className="text-[10px] font-medium text-foreground uppercase tracking-wider">Stratified Mode</span>
+                          <p className="text-xs text-muted-foreground">Best for general analysis. Samples conversations across different lengths to ensure diverse representation.</p>
+                        </div>
+                        <div className="space-y-1">
+                          <span className="text-[10px] font-medium text-foreground uppercase tracking-wider">Date Range Mode</span>
+                          <p className="text-xs text-muted-foreground">Best for time-specific analysis (e.g., "last week's issues"). Analyzes all conversations in the period.</p>
+                        </div>
+                      </div>
+
+                      <div className="pt-3 border-t border-border/50">
+                        <p className="text-xs text-muted-foreground">
+                          <strong>Tip:</strong> Start with default values. Increase sample size for more comprehensive results, or decrease for faster analysis.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </TooltipProvider>
             </TabsContent>
 
             <TabsContent value="advanced" className="p-0 mt-0 h-full">

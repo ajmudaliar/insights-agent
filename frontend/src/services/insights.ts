@@ -281,6 +281,16 @@ export async function updateConfig(
       domain_context: updates.domain_context ?? currentConfig.domain_context,
       categorization_guidance: updates.categorization_guidance ?? currentConfig.categorization_guidance,
       created_at: currentConfig.created_at,
+      // Workflow params
+      sampling_mode: updates.sampling_mode ?? currentConfig.sampling_mode,
+      sample_size: updates.sample_size ?? currentConfig.sample_size,
+      oversample_multiplier: updates.oversample_multiplier ?? currentConfig.oversample_multiplier,
+      start_date: updates.start_date ?? currentConfig.start_date,
+      end_date: updates.end_date ?? currentConfig.end_date,
+      max_messages_per_conversation: updates.max_messages_per_conversation ?? currentConfig.max_messages_per_conversation,
+      max_top_level_categories: updates.max_top_level_categories ?? currentConfig.max_top_level_categories,
+      min_category_size: updates.min_category_size ?? currentConfig.min_category_size,
+      max_subcategories_per_category: updates.max_subcategories_per_category ?? currentConfig.max_subcategories_per_category,
     };
 
     // Upsert the config

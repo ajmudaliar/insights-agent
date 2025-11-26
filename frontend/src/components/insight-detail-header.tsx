@@ -14,6 +14,8 @@ import {
   LayersIcon,
   MessageSquareIcon,
   Pencil,
+  Shuffle,
+  CalendarRange,
 } from "lucide-react";
 
 interface InsightDetailHeaderProps {
@@ -185,6 +187,44 @@ export function InsightDetailHeader({ config, stats, onEditClick }: InsightDetai
                       <p className="text-xs text-muted-foreground/70">{attr.description}</p>
                     </div>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {/* Workflow Params */}
+            {config.sampling_mode && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                  {config.sampling_mode === "stratified" ? (
+                    <Shuffle className="h-3 w-3" />
+                  ) : (
+                    <CalendarRange className="h-3 w-3" />
+                  )}
+                  <span>Workflow Parameters</span>
+                </div>
+                <div className="pl-5 flex flex-wrap gap-2">
+                  <Badge variant="outline" className="h-5 text-[10px] px-2 py-0">
+                    {config.sampling_mode === "stratified" ? "Stratified" : "Date Range"}
+                  </Badge>
+                  {config.sampling_mode === "stratified" && config.sample_size && (
+                    <Badge variant="outline" className="h-5 text-[10px] px-2 py-0">
+                      {config.sample_size} samples
+                    </Badge>
+                  )}
+                  {config.sampling_mode === "date_range" && config.start_date && config.end_date && (
+                    <Badge variant="outline" className="h-5 text-[10px] px-2 py-0">
+                      {new Date(config.start_date).toLocaleDateString()} - {new Date(config.end_date).toLocaleDateString()}
+                    </Badge>
+                  )}
+                  <Badge variant="outline" className="h-5 text-[10px] px-2 py-0">
+                    {config.max_messages_per_conversation} msg/conv
+                  </Badge>
+                  <Badge variant="outline" className="h-5 text-[10px] px-2 py-0">
+                    {config.max_top_level_categories} categories
+                  </Badge>
+                  <Badge variant="outline" className="h-5 text-[10px] px-2 py-0">
+                    {config.max_subcategories_per_category} subcategories
+                  </Badge>
                 </div>
               </div>
             )}

@@ -22,6 +22,17 @@ export const InsightsConfigsTable = new Table({
     domain_context: z.string().optional().describe("Domain-specific context about business, products, users, terminology.'"),
     categorization_guidance: z.string().optional().describe("User guidance on how to approach category generation.'"),
     created_at: z.string().describe("ISO timestamp when config was created"),
+
+    // Workflow params (LLM-inferred from user inputs)
+    sampling_mode: z.enum(["stratified", "date_range"]).describe("How to select conversations"),
+    sample_size: z.number().optional().describe("[stratified] Number of conversations to sample"),
+    oversample_multiplier: z.number().optional().describe("[stratified] Multiplier for oversampling"),
+    start_date: z.string().optional().describe("[date_range] Start date ISO string"),
+    end_date: z.string().optional().describe("[date_range] End date ISO string"),
+    max_messages_per_conversation: z.number().describe("Max messages to fetch per conversation"),
+    max_top_level_categories: z.number().describe("Max top-level categories to discover"),
+    min_category_size: z.number().describe("Min conversations to generate subcategories"),
+    max_subcategories_per_category: z.number().describe("Max subcategories per category"),
   },
   factor: 10,
 });

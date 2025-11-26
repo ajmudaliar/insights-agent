@@ -8,6 +8,8 @@ import { InsightsConfigsTable } from "../tables/insights-configs";
 /**
  * Master Workflow: Orchestrates Complete Insights Pipeline
  *
+ * Reads workflow params from config (generated in Phase 0) but allows overrides.
+ *
  * Phase 1: Sample conversations (stratified or date range)
  * Phase 2: Extract semantic features from conversations
  * Phase 3: Discover hierarchical topology and assign conversations
@@ -18,26 +20,6 @@ export const MasterWorkflow = new Workflow({
   timeout: "240m",
   input: z.object({
     configId: z.string().describe("Config ID from Phase 0"),
-
-    // Sampling mode
-    samplingMode: z
-      .enum(["stratified", "date_range"])
-      .default("stratified")
-      .describe("How to select conversations"),
-
-    // Stratified mode options
-    sampleSize: z.number().min(1).max(500).default(100).describe("[stratified] Number of conversations to sample"),
-    oversampleMultiplier: z.number().min(1).max(10).default(5).describe("[stratified] Multiplier for oversampling"),
-
-    // Date range mode options
-    startDate: z.string().optional().describe("[date_range] Start date (ISO string, inclusive)"),
-    endDate: z.string().optional().describe("[date_range] End date (ISO string, inclusive)"),
-
-    // Common options
-    maxNumberOfMessages: z.number().min(1).max(100).default(50).describe("Maximum messages to fetch per conversation"),
-    maxTopLevelCategories: z.number().min(2).max(10).default(5).describe("Maximum number of top-level categories"),
-    minCategorySize: z.number().min(3).default(3).describe("Minimum conversations to generate subcategories"),
-    maxSubcategoriesPerCategory: z.number().min(0).max(10).default(5).describe("Maximum subcategories per category (0 to skip)"),
   }),
   output: z.object({
     configId: z.string(),
@@ -74,6 +56,19 @@ export const MasterWorkflow = new Workflow({
       return rows[0];
     });
 
+    // Use params from config
+    const params = {
+      samplingMode: config.sampling_mode,
+      sampleSize: config.sample_size ?? 100,
+      oversampleMultiplier: config.oversample_multiplier ?? 5,
+      startDate: config.start_date,
+      endDate: config.end_date,
+      maxNumberOfMessages: config.max_messages_per_conversation,
+      maxTopLevelCategories: config.max_top_level_categories,
+      minCategorySize: config.min_category_size,
+      maxSubcategoriesPerCategory: config.max_subcategories_per_category,
+    };
+
     // Phase 1: Sample conversations
     let conversationIds: string[];
     let samplingStats: {
@@ -84,17 +79,17 @@ export const MasterWorkflow = new Workflow({
       total_sampled: number;
     };
 
-    if (input.samplingMode === "date_range") {
-      if (!input.startDate || !input.endDate) {
-        throw new Error("date_range mode requires startDate and endDate");
+    if (params.samplingMode === "date_range") {
+      if (!params.startDate || !params.endDate) {
+        throw new Error("date_range mode requires startDate and endDate (from config or input)");
       }
 
       const phase1Id = await step("sample-date-range", async () => {
         const { id } = await SampleDateRange.getOrCreate({
           input: {
-            startDate: input.startDate!,
-            endDate: input.endDate!,
-            maxMessagesPerConversation: input.maxNumberOfMessages,
+            startDate: params.startDate!,
+            endDate: params.endDate!,
+            maxMessagesPerConversation: params.maxNumberOfMessages,
           },
         });
         return id;
@@ -113,9 +108,9 @@ export const MasterWorkflow = new Workflow({
       const phase1Id = await step("sample-stratified", async () => {
         const { id } = await SampleStratified.getOrCreate({
           input: {
-            maxConversations: input.sampleSize,
-            oversampleMultiplier: input.oversampleMultiplier,
-            maxMessagesPerConversation: input.maxNumberOfMessages,
+            maxConversations: params.sampleSize,
+            oversampleMultiplier: params.oversampleMultiplier,
+            maxMessagesPerConversation: params.maxNumberOfMessages,
           },
         });
         return id;
@@ -132,7 +127,7 @@ export const MasterWorkflow = new Workflow({
       };
     }
 
-    // Phase 2: Extract semantic features and generate embeddings
+    // Phase 2: Extract semantic features
     const phase2Id = await step("extract-semantic-features", async () => {
       const { id } = await ExtractSemanticFeaturesWorkflow.getOrCreate({
         input: {
@@ -151,9 +146,9 @@ export const MasterWorkflow = new Workflow({
       const { id } = await DiscoverAndAssignTopologyWorkflow.getOrCreate({
         input: {
           configId: input.configId,
-          maxTopLevelCategories: input.maxTopLevelCategories,
-          minCategorySize: input.minCategorySize,
-          maxSubcategoriesPerCategory: input.maxSubcategoriesPerCategory,
+          maxTopLevelCategories: params.maxTopLevelCategories,
+          minCategorySize: params.minCategorySize,
+          maxSubcategoriesPerCategory: params.maxSubcategoriesPerCategory,
         },
       });
       return id;

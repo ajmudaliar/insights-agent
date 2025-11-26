@@ -22,6 +22,16 @@ export type InsightsConfig = {
   created_at: string;
   createdAt: string;
   updatedAt: string;
+  // Workflow params (LLM-inferred from user inputs)
+  sampling_mode: "stratified" | "date_range";
+  sample_size?: number;
+  oversample_multiplier?: number;
+  start_date?: string;
+  end_date?: string;
+  max_messages_per_conversation: number;
+  max_top_level_categories: number;
+  min_category_size: number;
+  max_subcategories_per_category: number;
 };
 
 // Category from CategoriesTable
