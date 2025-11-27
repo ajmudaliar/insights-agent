@@ -1,7 +1,7 @@
 import { defineConfig, z } from "@botpress/runtime";
-import { config } from 'dotenv';
+import { config } from "dotenv";
 
-config()
+config();
 
 export default defineConfig({
   name: "bot",
@@ -13,5 +13,11 @@ export default defineConfig({
 
   user: {
     state: z.object({}),
+  },
+  dependencies: {
+    integrations: {
+      chat: { version: "chat@0.7.3", enabled: true },
+      webchat: { version: "webchat@0.3.0", enabled: true },
+    },
   },
 });
