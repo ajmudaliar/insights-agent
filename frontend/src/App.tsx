@@ -1,4 +1,4 @@
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { HashRouter, Route, Routes } from "react-router-dom";
 import { Toaster } from "@/components/ui/sonner";
 import { AppLayout } from "./components/app-layout";
 
@@ -7,7 +7,7 @@ import InsightDetail from "./pages/insight-detail";
 
 function App() {
   return (
-    <BrowserRouter>
+    <HashRouter>
       <Routes>
         <Route path="/" element={<AppLayout />}>
           <Route index element={<Dashboard />} />
@@ -15,7 +15,7 @@ function App() {
         </Route>
       </Routes>
       <Toaster />
-    </BrowserRouter>
+    </HashRouter>
   );
 }
 
