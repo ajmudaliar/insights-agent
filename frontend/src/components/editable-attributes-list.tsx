@@ -117,7 +117,7 @@ export function EditableAttributesList({
     }
   };
 
-  const handleToggleFilter = async (index: number) => {
+  const _handleToggleFilter = async (index: number) => {
     try {
       setIsSaving(true);
       setError(null);

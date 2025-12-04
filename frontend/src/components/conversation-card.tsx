@@ -261,8 +261,8 @@ export function ConversationCard({ conversationId, configId, assignment, isSubca
                           {messages.map((message, idx) => {
                             // Extract text and options from payload
                             const hasPayload = message.payload && typeof message.payload === 'object';
-                            const text = message.content || (hasPayload && message.payload.text) || '';
-                            const options = hasPayload && Array.isArray(message.payload.options) ? message.payload.options : [];
+                            const text = message.content || (hasPayload && message.payload?.text) || '';
+                            const options = hasPayload && Array.isArray(message.payload?.options) ? message.payload?.options : [];
 
                             return (
                               <div key={message.id || idx} className="space-y-2">
@@ -293,7 +293,7 @@ export function ConversationCard({ conversationId, configId, assignment, isSubca
                                 }`}>
                                   {text ? (
                                     <div className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap">
-                                      {text.split('\n').map((line, i) => {
+                                      {text.split('\n').map((line: string, i: number) => {
                                         // Render markdown-style bold
                                         const formatted = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
                                         return (

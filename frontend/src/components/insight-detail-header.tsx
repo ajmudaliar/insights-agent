@@ -6,7 +6,6 @@ import type { InsightsConfig, TopologyStats } from "@/types/insights";
 import {
   Calendar,
   Hash,
-  Activity,
   Settings2,
   ChevronDown,
   Filter,

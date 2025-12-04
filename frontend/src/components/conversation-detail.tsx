@@ -12,7 +12,7 @@ interface ConversationDetailProps {
   features: ConversationFeatures | null;
 }
 
-export function ConversationDetail({ conversationId, configId, assignment, isSubcategory, features }: ConversationDetailProps) {
+export function ConversationDetail({ conversationId, configId: _configId, assignment, isSubcategory, features }: ConversationDetailProps) {
   const [isTranscriptOpen, setIsTranscriptOpen] = useState(false);
 
   // Parse transcript into messages
