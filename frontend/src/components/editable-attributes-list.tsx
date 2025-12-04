@@ -117,24 +117,6 @@ export function EditableAttributesList({
     }
   };
 
-  const _handleToggleFilter = async (index: number) => {
-    try {
-      setIsSaving(true);
-      setError(null);
-      const newAttributes = attributes.map((attr, idx) =>
-        idx === index ? { ...attr, filter_by: !attr.filter_by } : attr
-      );
-      await onSave(newAttributes);
-
-      setShowSuccess(true);
-      setTimeout(() => setShowSuccess(false), 2000);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update attribute");
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
   const renderAttributeForm = () => (
     <div className="space-y-3 p-3 border rounded-md bg-accent/20">
       <div className="space-y-2">
