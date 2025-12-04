@@ -1,0 +1,372 @@
+[
+  {
+    "id": "conv_001",
+    "channel": "webchat",
+    "tags": { "topic": "actions", "source": "website" },
+    "messages": [
+      { "role": "user", "content": "How do I create a custom action in Botpress?" },
+      { "role": "bot", "content": "To create a custom action, you'll need to define it in your bot's actions folder. Here's the basic structure:\n\n```typescript\nimport { Action } from '@botpress/sdk'\n\nexport const myAction = new Action({\n  name: 'myAction',\n  description: 'Description of what it does',\n  handler: async ({ input }) => {\n    // Your logic here\n    return { result: 'success' }\n  }\n})\n```\n\nWould you like me to explain any specific part of this?" },
+      { "role": "user", "content": "How do I access conversation variables inside the action?" },
+      { "role": "bot", "content": "You can access conversation variables through the `ctx` parameter. Here's how:\n\n```typescript\nhandler: async ({ ctx }) => {\n  const userName = ctx.conversation.tags['userName']\n  const sessionData = await ctx.state.get('session')\n  \n  // You can also set variables\n  await ctx.state.set('session', { ...sessionData, lastAction: 'myAction' })\n  \n  return { result: userName }\n}\n```\n\nThe `ctx.conversation.tags` gives you conversation-level data, while `ctx.state` lets you read/write state." },
+      { "role": "user", "content": "Perfect, that's exactly what I needed. Thanks!" }
+    ]
+  },
+  {
+    "id": "conv_002",
+    "channel": "webchat",
+    "tags": { "topic": "actions", "source": "website" },
+    "messages": [
+      { "role": "user", "content": "My action is throwing a timeout error" },
+      { "role": "bot", "content": "Action timeouts usually occur when an external API call takes too long or there's an infinite loop. Can you share:\n1. What your action is trying to do?\n2. The error message you're seeing?\n3. Are you making any external API calls?" },
+      { "role": "user", "content": "I'm calling an external REST API to fetch user data. The error says 'Action timed out after 30000ms'" },
+      { "role": "bot", "content": "The default action timeout is 30 seconds. You have a few options:\n\n1. **Increase the timeout** in your action definition:\n```typescript\nexport const myAction = new Action({\n  name: 'myAction',\n  timeout: 60000, // 60 seconds\n  handler: async ({ input }) => { ... }\n})\n```\n\n2. **Add timeout handling** to your API call:\n```typescript\nconst controller = new AbortController()\nconst timeout = setTimeout(() => controller.abort(), 25000)\n\ntry {\n  const response = await fetch(url, { signal: controller.signal })\n  clearTimeout(timeout)\n  return response.json()\n} catch (err) {\n  if (err.name === 'AbortError') {\n    return { error: 'Request timed out' }\n  }\n  throw err\n}\n```\n\nWhich approach would work better for your use case?" },
+      { "role": "user", "content": "I'll try increasing the timeout first. If the API is consistently slow I might need to look at caching" },
+      { "role": "bot", "content": "Good plan! Caching is definitely worth considering for slow APIs. You can use Botpress tables as a simple cache:\n\n```typescript\n// Check cache first\nconst cached = await ctx.tables.users.findOne({ odId: odId })\nif (cached && Date.now() - cached.fetchedAt < 3600000) {\n  return cached.data\n}\n\n// Fetch and cache\nconst data = await fetchFromAPI(externalId)\nawait ctx.tables.users.upsert({ odId: odId, data, fetchedAt: Date.now() })\nreturn data\n```\n\nLet me know if you need help setting up the table schema!" },
+      { "role": "user", "content": "This is really helpful, thank you!" }
+    ]
+  },
+  {
+    "id": "conv_003",
+    "channel": "webchat",
+    "tags": { "topic": "webhooks", "source": "website" },
+    "messages": [
+      { "role": "user", "content": "Webhook not receiving events from my bot" },
+      { "role": "bot", "content": "Let's troubleshoot this. First, can you confirm:\n1. Is the webhook URL publicly accessible (not localhost)?\n2. What events are you trying to receive?\n3. Have you checked the webhook logs in the Botpress dashboard?" },
+      { "role": "user", "content": "The URL is public, I'm trying to receive message events. I don't see any logs in the dashboard" },
+      { "role": "bot", "content": "If there are no logs, the webhook might not be registered correctly. Let's verify:\n\n1. Go to **Studio > Integrations > Webhooks**\n2. Check if your webhook URL is listed and enabled\n3. Verify the events you want are selected\n\nAlso, make sure your endpoint returns a 200 status quickly. Botpress expects a response within 5 seconds or it will retry. Here's a simple handler:\n\n```javascript\napp.post('/webhook', (req, res) => {\n  res.status(200).send('OK') // Respond immediately\n  \n  // Process the event asynchronously\n  processEvent(req.body).catch(console.error)\n})\n```\n\nCan you check these and let me know what you find?" },
+      { "role": "user", "content": "Found it - the webhook was disabled. Enabled it and now I'm receiving events. Thanks!" }
+    ]
+  },
+  {
+    "id": "conv_004",
+    "channel": "slack",
+    "tags": { "topic": "webhooks", "source": "desktop" },
+    "messages": [
+      { "role": "user", "content": "How do I validate webhook signatures?" },
+      { "role": "bot", "content": "Botpress signs all webhook payloads with HMAC-SHA256. Here's how to validate:\n\n```typescript\nimport crypto from 'crypto'\n\nfunction validateSignature(payload: string, signature: string, secret: string): boolean {\n  const expected = crypto\n    .createHmac('sha256', secret)\n    .update(payload)\n    .digest('hex')\n  \n  return crypto.timingSafeEqual(\n    Buffer.from(signature),\n    Buffer.from(`sha256=${expected}`)\n  )\n}\n\n// In your webhook handler:\napp.post('/webhook', (req, res) => {\n  const signature = req.headers['x-bp-signature']\n  const isValid = validateSignature(\n    JSON.stringify(req.body),\n    signature,\n    process.env.WEBHOOK_SECRET\n  )\n  \n  if (!isValid) {\n    return res.status(401).send('Invalid signature')\n  }\n  \n  // Process webhook...\n})\n```\n\nYou can find your webhook secret in the Botpress dashboard under Integrations > Webhooks." },
+      { "role": "user", "content": "Where exactly in the dashboard do I find the secret?" },
+      { "role": "bot", "content": "Navigate to:\n1. **Botpress Studio** for your bot\n2. Click **Integrations** in the left sidebar\n3. Select **Webhooks**\n4. Click on your webhook configuration\n5. The **Signing Secret** is shown there (click the eye icon to reveal it)\n\nIf you haven't set one up yet, you can generate a new secret by clicking 'Regenerate Secret'. Just remember to update your server code with the new secret!" },
+      { "role": "user", "content": "Got it, thanks!" }
+    ]
+  },
+  {
+    "id": "conv_005",
+    "channel": "webchat",
+    "tags": { "topic": "workflows", "source": "website" },
+    "messages": [
+      { "role": "user", "content": "Workflow timeout problems - my workflow keeps failing" },
+      { "role": "bot", "content": "Workflow timeouts can happen for several reasons. To help diagnose:\n1. What's the timeout error message you're seeing?\n2. How long does your workflow typically run?\n3. Does it involve any external API calls or long-running actions?" },
+      { "role": "user", "content": "It says 'Workflow exceeded maximum execution time'. The workflow processes a batch of items, usually 50-100 items" },
+      { "role": "bot", "content": "Processing large batches in a single workflow run can hit the timeout limit. Here are some solutions:\n\n**1. Increase workflow timeout:**\n```typescript\nexport const batchProcessor = new Workflow({\n  name: 'batchProcessor',\n  timeout: '30m', // Increase from default\n  handler: async ({ input, step }) => { ... }\n})\n```\n\n**2. Process in chunks with workflow continuation:**\n```typescript\nhandler: async ({ input, step }) => {\n  const { items, processedCount = 0 } = input\n  const CHUNK_SIZE = 10\n  \n  const chunk = items.slice(processedCount, processedCount + CHUNK_SIZE)\n  \n  await step('process-chunk', async () => {\n    for (const item of chunk) {\n      await processItem(item)\n    }\n  })\n  \n  const newCount = processedCount + chunk.length\n  \n  if (newCount < items.length) {\n    // Continue with next chunk\n    return { continue: true, items, processedCount: newCount }\n  }\n  \n  return { done: true, totalProcessed: newCount }\n}\n```\n\nWhich approach fits your use case better?" },
+      { "role": "user", "content": "The chunking approach looks better since I don't know how many items I'll have. How do I trigger the continuation?" },
+      { "role": "bot", "content": "For workflow continuation, you can use the `workflow.continue` pattern:\n\n```typescript\nhandler: async ({ input, step, workflow }) => {\n  const { items, processedCount = 0 } = input\n  const CHUNK_SIZE = 10\n  \n  // Process current chunk\n  const chunk = items.slice(processedCount, processedCount + CHUNK_SIZE)\n  await step('process-chunk', async () => {\n    for (const item of chunk) {\n      await processItem(item)\n    }\n  })\n  \n  const newCount = processedCount + CHUNK_SIZE\n  \n  if (newCount < items.length) {\n    // Schedule continuation\n    await workflow.continue({\n      items,\n      processedCount: newCount\n    })\n    return { status: 'continuing', processed: newCount }\n  }\n  \n  return { status: 'complete', totalProcessed: newCount }\n}\n```\n\nThis creates a new workflow instance for each chunk, avoiding timeout issues entirely." },
+      { "role": "user", "content": "This is perfect. I'll implement the chunking pattern. Thanks for the detailed explanation!" }
+    ]
+  },
+  {
+    "id": "conv_006",
+    "channel": "webchat",
+    "tags": { "topic": "workflows", "source": "website" },
+    "messages": [
+      { "role": "user", "content": "How do I create a conditional branch in my workflow?" },
+      { "role": "bot", "content": "You can use standard JavaScript conditionals within your workflow handler. Here's an example:\n\n```typescript\nhandler: async ({ input, step }) => {\n  const userType = input.userType\n  \n  if (userType === 'premium') {\n    await step('premium-flow', async () => {\n      // Premium user logic\n      return { discount: 20 }\n    })\n  } else if (userType === 'returning') {\n    await step('returning-flow', async () => {\n      // Returning user logic  \n      return { discount: 10 }\n    })\n  } else {\n    await step('new-user-flow', async () => {\n      // New user logic\n      return { discount: 5 }\n    })\n  }\n}\n```\n\nThe `step` function creates checkpoints, so if the workflow fails, it can resume from the last completed step." },
+      { "role": "user", "content": "Can I have parallel branches that run simultaneously?" },
+      { "role": "bot", "content": "Yes! Use `Promise.all` with multiple steps:\n\n```typescript\nhandler: async ({ input, step }) => {\n  // Run these in parallel\n  const [userData, orderHistory, recommendations] = await Promise.all([\n    step('fetch-user', async () => fetchUserData(input.userId)),\n    step('fetch-orders', async () => fetchOrders(input.userId)),\n    step('get-recommendations', async () => getRecommendations(input.userId))\n  ])\n  \n  // Continue with combined results\n  await step('process-results', async () => {\n    return combineData(userData, orderHistory, recommendations)\n  })\n}\n```\n\nThis runs all three fetches concurrently, which is much faster than sequential execution." },
+      { "role": "user", "content": "Awesome, exactly what I was looking for!" }
+    ]
+  },
+  {
+    "id": "conv_007",
+    "channel": "webchat",
+    "tags": { "topic": "tables", "source": "website" },
+    "messages": [
+      { "role": "user", "content": "Table query syntax help - how do I filter records?" },
+      { "role": "bot", "content": "Botpress tables support various query operations. Here are the common patterns:\n\n**Basic filtering:**\n```typescript\n// Find by exact match\nconst user = await ctx.tables.users.findOne({ email: 'user@example.com' })\n\n// Find multiple records\nconst activeUsers = await ctx.tables.users.find({ status: 'active' })\n```\n\n**Advanced filtering:**\n```typescript\n// Greater than / less than\nconst recentOrders = await ctx.tables.orders.find({\n  createdAt: { $gt: new Date('2024-01-01') }\n})\n\n// Multiple conditions (AND)\nconst results = await ctx.tables.products.find({\n  category: 'electronics',\n  price: { $lt: 100 }\n})\n\n// OR conditions\nconst results = await ctx.tables.users.find({\n  $or: [\n    { role: 'admin' },\n    { role: 'moderator' }\n  ]\n})\n```\n\nWhat kind of query are you trying to build?" },
+      { "role": "user", "content": "I want to find all orders from the last 7 days where the total is over $50" },
+      { "role": "bot", "content": "Here's exactly what you need:\n\n```typescript\nconst sevenDaysAgo = new Date()\nsevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)\n\nconst orders = await ctx.tables.orders.find({\n  createdAt: { $gte: sevenDaysAgo },\n  total: { $gt: 50 }\n})\n```\n\nYou can also add sorting and limiting:\n\n```typescript\nconst orders = await ctx.tables.orders.find(\n  {\n    createdAt: { $gte: sevenDaysAgo },\n    total: { $gt: 50 }\n  },\n  {\n    sort: { createdAt: -1 }, // Newest first\n    limit: 100\n  }\n)\n```" },
+      { "role": "user", "content": "Perfect! One more question - how do I count the results without fetching all records?" },
+      { "role": "bot", "content": "Use the `count` method:\n\n```typescript\nconst orderCount = await ctx.tables.orders.count({\n  createdAt: { $gte: sevenDaysAgo },\n  total: { $gt: 50 }\n})\n\nconsole.log(`Found ${orderCount} orders`)\n```\n\nThis is much more efficient than fetching all records and checking `.length`, especially for large datasets." },
+      { "role": "user", "content": "Great, thanks for all the help!" }
+    ]
+  },
+  {
+    "id": "conv_008",
+    "channel": "webchat",
+    "tags": { "topic": "tables", "source": "mobile" },
+    "messages": [
+      { "role": "user", "content": "My table query is returning empty results but I know there's data" },
+      { "role": "bot", "content": "This is a common issue with a few possible causes. Let's debug:\n\n1. **Check the table name** - Is it exactly matching your schema definition?\n2. **Check field names** - Are you using the correct column names?\n3. **Check data types** - Are you querying with the right type (string vs number)?\n\nCan you share your query code and table schema?" },
+      { "role": "user", "content": "Here's my query: `await ctx.tables.Users.find({ status: 'active' })`" },
+      { "role": "bot", "content": "I see the issue! Table names in queries are **case-sensitive** and should match your schema exactly. If your table is defined as `users` (lowercase), you need:\n\n```typescript\n// Correct\nawait ctx.tables.users.find({ status: 'active' })\n\n// Incorrect - won't find the table\nawait ctx.tables.Users.find({ status: 'active' })\n```\n\nCheck your table definition in `src/tables/` to see the exact name used." },
+      { "role": "user", "content": "That was it! Changed to lowercase and it works now. Such a simple mistake!" },
+      { "role": "bot", "content": "It's a very common gotcha! TypeScript should help catch this - make sure your table types are properly set up:\n\n```typescript\n// In your table definition\nexport const users = new Table({\n  name: 'users',  // This is the key\n  columns: {\n    status: { type: 'string' },\n    // ...\n  }\n})\n```\n\nThen `ctx.tables.users` will have proper autocomplete and type checking." }
+    ]
+  },
+  {
+    "id": "conv_009",
+    "channel": "webchat",
+    "tags": { "topic": "deployment", "source": "website" },
+    "messages": [
+      { "role": "user", "content": "Bot not responding in production but works fine locally" },
+      { "role": "bot", "content": "This usually points to environment or configuration differences. Let's check a few things:\n\n1. **Environment variables** - Are all required env vars set in production?\n2. **API keys** - Are production API keys different from development?\n3. **Logs** - What do the production logs show?\n\nCan you check the bot logs in the Botpress Cloud dashboard?" },
+      { "role": "user", "content": "I see errors about 'OPENAI_API_KEY not found' in the logs" },
+      { "role": "bot", "content": "That's the issue. Your production environment is missing the OpenAI API key. To fix:\n\n1. Go to **Botpress Cloud Dashboard**\n2. Select your bot\n3. Click **Configuration** > **Environment Variables**\n4. Add `OPENAI_API_KEY` with your production API key\n5. Click **Save** and **Redeploy**\n\nAlternatively, you can set it via CLI:\n```bash\nbp deploy --set-env OPENAI_API_KEY=sk-xxx...\n```\n\nMake sure you're using your production API key, not the development one (they may have different rate limits or permissions)." },
+      { "role": "user", "content": "Added the env var and redeployed. Bot is responding now. Thanks!" }
+    ]
+  },
+  {
+    "id": "conv_010",
+    "channel": "slack",
+    "tags": { "topic": "deployment", "source": "desktop" },
+    "messages": [
+      { "role": "user", "content": "How do I check bot logs for errors?" },
+      { "role": "bot", "content": "There are several ways to access logs:\n\n**1. Botpress Cloud Dashboard:**\n- Go to your bot > **Logs** tab\n- Filter by log level (error, warn, info, debug)\n- Filter by time range\n\n**2. CLI:**\n```bash\nbp logs --bot-id your-bot-id --tail\n```\nThe `--tail` flag streams logs in real-time.\n\n**3. In your code** - add custom logging:\n```typescript\nimport { logger } from '@botpress/sdk'\n\nlogger.info('Processing user request', { userId })\nlogger.error('Failed to fetch data', { error: err.message })\n```\n\nWhich method would you like to use?" },
+      { "role": "user", "content": "The dashboard works. I can see errors now. Thanks!" }
+    ]
+  },
+  {
+    "id": "conv_011",
+    "channel": "webchat",
+    "tags": { "topic": "integrations", "source": "website" },
+    "messages": [
+      { "role": "user", "content": "How do I configure the WhatsApp integration?" },
+      { "role": "bot", "content": "Here's how to set up WhatsApp with Botpress:\n\n**Prerequisites:**\n- A Meta Business account\n- A WhatsApp Business API account\n- A verified phone number\n\n**Steps:**\n1. Go to **Botpress Studio** > **Integrations**\n2. Click **Add Integration** > **WhatsApp**\n3. Enter your WhatsApp Business credentials:\n   - Phone Number ID\n   - WhatsApp Business Account ID\n   - Access Token (from Meta Developer Portal)\n4. Configure the webhook URL in your Meta dashboard\n5. Test with a message from WhatsApp\n\nAre you setting this up for the first time or troubleshooting an existing setup?" },
+      { "role": "user", "content": "First time setup. Where do I find the Phone Number ID?" },
+      { "role": "bot", "content": "To find your Phone Number ID:\n\n1. Go to **Meta Developer Portal** (developers.facebook.com)\n2. Select your app\n3. Click **WhatsApp** > **Getting Started** in the left menu\n4. Under 'Send and receive messages', you'll see:\n   - **Phone Number ID**: A numeric ID (e.g., 1234567890)\n   - **WhatsApp Business Account ID**: Another numeric ID\n\nBoth are displayed on that page. Copy them into Botpress.\n\nFor the Access Token:\n1. In the same 'Getting Started' section\n2. Click **Generate** under 'Temporary access token'\n3. For production, create a permanent token under **System Users**\n\nWant me to explain the permanent token setup?" },
+      { "role": "user", "content": "Yes please, I'll need a permanent token for production" },
+      { "role": "bot", "content": "For a permanent access token:\n\n1. Go to **Business Settings** in Meta Business Suite\n2. Navigate to **Users** > **System Users**\n3. Click **Add** to create a new system user\n4. Set the role to **Admin**\n5. Click on the user > **Add Assets**\n6. Select your WhatsApp Business Account and grant **Full Control**\n7. Click **Generate New Token**\n8. Select the permissions:\n   - `whatsapp_business_management`\n   - `whatsapp_business_messaging`\n9. Copy the generated token\n\nThis token won't expire like the temporary one. Store it securely in your environment variables!" },
+      { "role": "user", "content": "Got it all set up. Messages are flowing through now. Thanks for walking me through it!" }
+    ]
+  },
+  {
+    "id": "conv_012",
+    "channel": "webchat",
+    "tags": { "topic": "integrations", "source": "website" },
+    "messages": [
+      { "role": "user", "content": "Telegram bot not responding to messages" },
+      { "role": "bot", "content": "Let's troubleshoot your Telegram integration:\n\n1. **Check bot token** - Is it correct and active?\n2. **Webhook status** - Is Telegram sending to your bot?\n3. **Bot permissions** - Can the bot receive messages?\n\nFirst, verify your bot is active by messaging @BotFather on Telegram and checking your bot's status. Is the bot showing as active there?" },
+      { "role": "user", "content": "Bot shows active with BotFather. I created it yesterday" },
+      { "role": "bot", "content": "Good, the bot is alive. Now let's check the webhook. Telegram needs to know where to send messages.\n\n1. In Botpress Studio > Integrations > Telegram, copy your **Webhook URL**\n2. Set it via Telegram API:\n```\nhttps://api.telegram.org/bot<YOUR_TOKEN>/setWebhook?url=<WEBHOOK_URL>\n```\n\n3. Verify it's set:\n```\nhttps://api.telegram.org/bot<YOUR_TOKEN>/getWebhookInfo\n```\n\nYou can open these URLs in your browser. What does `getWebhookInfo` return?" },
+      { "role": "user", "content": "It shows the webhook URL but also says 'last_error_message': 'SSL certificate problem'" },
+      { "role": "bot", "content": "The SSL certificate error means Telegram can't verify your webhook's SSL certificate. This is common with:\n\n- Self-signed certificates\n- Expired certificates\n- Certificate chain issues\n\nIf you're using Botpress Cloud, this shouldn't happen as we provide valid SSL. But if you see this:\n\n1. **Make sure you're using the Botpress Cloud URL**, not a custom domain\n2. **Check your webhook URL** starts with `https://`\n\nThe URL should look like:\n```\nhttps://webhook.botpress.cloud/xxx-xxx-xxx\n```\n\nCan you verify the webhook URL you're using?" },
+      { "role": "user", "content": "Oh I was using my old self-hosted URL. Updated to the Botpress Cloud URL and it's working now!" }
+    ]
+  },
+  {
+    "id": "conv_013",
+    "channel": "webchat",
+    "tags": { "topic": "nlu", "source": "website" },
+    "messages": [
+      { "role": "user", "content": "Bot not understanding user intents accurately" },
+      { "role": "bot", "content": "Intent recognition issues usually come from training data. Let's improve it:\n\n1. **How many training examples** do you have per intent?\n2. **Are examples diverse** - different phrasings of the same intent?\n3. **Are intents clearly distinct** - no overlapping meanings?\n\nCan you share an example of an intent that's being misclassified?" },
+      { "role": "user", "content": "The 'check_order_status' intent keeps getting confused with 'cancel_order'. I have about 5 examples for each" },
+      { "role": "bot", "content": "5 examples is too few - aim for at least 15-20 per intent. Also, make sure they're distinct.\n\n**Good 'check_order_status' examples:**\n- \"Where is my order?\"\n- \"What's the status of order #123?\"\n- \"Has my package shipped yet?\"\n- \"When will my order arrive?\"\n- \"Track my recent purchase\"\n- \"I want to check on my delivery\"\n- \"Any updates on my order?\"\n\n**Good 'cancel_order' examples:**\n- \"I want to cancel my order\"\n- \"Please cancel order #123\"\n- \"Stop my order from shipping\"\n- \"I don't want this anymore, cancel it\"\n- \"How do I cancel?\"\n- \"Cancel my recent purchase\"\n- \"I changed my mind, cancel the order\"\n\nNotice how the **action words are clearly different** - 'check/track/status' vs 'cancel/stop/don't want'. Add more diverse examples like these." },
+      { "role": "user", "content": "Makes sense. I'll add more examples. Is there a way to test before deploying?" },
+      { "role": "bot", "content": "Yes! Use the NLU testing panel:\n\n1. Go to **Studio** > **NLU** tab\n2. Click **Test** in the top right\n3. Type test phrases to see:\n   - Which intent is detected\n   - Confidence score\n   - Extracted entities\n\nAim for >80% confidence on your test phrases. If confidence is low or wrong intent is chosen, add more training examples.\n\nYou can also add **negative examples** - phrases that should NOT match an intent:\n```\nIntent: cancel_order\nNegative: \"What's my order status?\" // This should NOT match cancel_order\n```" },
+      { "role": "user", "content": "The test panel is super helpful! Added more examples and accuracy improved a lot. Thanks!" }
+    ]
+  },
+  {
+    "id": "conv_014",
+    "channel": "webchat",
+    "tags": { "topic": "nlu", "source": "website" },
+    "messages": [
+      { "role": "user", "content": "How do I extract entities from user messages?" },
+      { "role": "bot", "content": "Botpress supports several entity types:\n\n**Built-in entities:**\n- `@system.date` - Dates and times\n- `@system.number` - Numbers\n- `@system.email` - Email addresses\n- `@system.url` - URLs\n- `@system.phone` - Phone numbers\n\n**Custom entities:**\nYou can define your own:\n\n```typescript\n// List entity\nexport const productCategory = new Entity({\n  name: 'productCategory',\n  type: 'list',\n  values: [\n    { name: 'electronics', synonyms: ['tech', 'gadgets', 'devices'] },\n    { name: 'clothing', synonyms: ['apparel', 'fashion', 'clothes'] },\n    { name: 'food', synonyms: ['groceries', 'edibles'] }\n  ]\n})\n\n// Pattern entity (regex)\nexport const orderNumber = new Entity({\n  name: 'orderNumber',\n  type: 'pattern',\n  pattern: 'ORD-[0-9]{6}'\n})\n```\n\nWhat kind of information do you need to extract?" },
+      { "role": "user", "content": "I need to extract product names and quantities from messages like 'I want 3 blue shirts'" },
+      { "role": "bot", "content": "For that you'll need:\n\n1. **Quantity** - Use `@system.number`\n2. **Color** - Custom list entity\n3. **Product** - Custom list entity\n\n```typescript\n// Color entity\nexport const color = new Entity({\n  name: 'color',\n  type: 'list',\n  values: [\n    { name: 'blue', synonyms: ['navy', 'azure', 'cobalt'] },\n    { name: 'red', synonyms: ['crimson', 'scarlet'] },\n    { name: 'green', synonyms: ['olive', 'emerald'] }\n    // Add more colors\n  ]\n})\n\n// Product entity\nexport const product = new Entity({\n  name: 'product',\n  type: 'list',\n  values: [\n    { name: 'shirt', synonyms: ['t-shirt', 'tee', 'top'] },\n    { name: 'pants', synonyms: ['jeans', 'trousers'] },\n    { name: 'shoes', synonyms: ['sneakers', 'boots', 'footwear'] }\n  ]\n})\n```\n\nThen in your intent training:\n```\nIntent: order_product\nExamples:\n- I want [3](@system.number) [blue](@color) [shirts](@product)\n- Order [2](@system.number) [red](@color) [shoes](@product)\n- Can I get [5](@system.number) [green](@color) [pants](@product)\n```\n\nThe entities will be extracted automatically in your action:\n```typescript\nconst { number, color, product } = event.nlu.entities\n```" },
+      { "role": "user", "content": "This is exactly what I needed. Thanks for the detailed examples!" }
+    ]
+  },
+  {
+    "id": "conv_015",
+    "channel": "webchat",
+    "tags": { "topic": "general", "source": "website" },
+    "messages": [
+      { "role": "user", "content": "I'm new to Botpress, where do I start?" },
+      { "role": "bot", "content": "Welcome! Here's a quick start path:\n\n**1. Get set up (5 min)**\n- Create an account at botpress.com\n- Create your first bot in the dashboard\n\n**2. Learn the basics (30 min)**\n- Complete the interactive tutorial in Studio\n- Understand: Conversations, Messages, Actions, Workflows\n\n**3. Build something simple**\n- Start with a FAQ bot or simple Q&A\n- Add 3-5 intents with training examples\n- Create a basic workflow\n\n**Key resources:**\n- Docs: docs.botpress.com\n- Templates: Start from a template in the dashboard\n- Community: discord.gg/botpress\n\nWhat kind of bot are you looking to build?" },
+      { "role": "user", "content": "A customer support bot for my e-commerce site" },
+      { "role": "bot", "content": "Great choice! Here's a roadmap for an e-commerce support bot:\n\n**Phase 1: Core FAQ**\n- Shipping information\n- Return policy\n- Payment methods\n- Contact info\n\n**Phase 2: Order Management**\n- Check order status (integrate with your order system)\n- Track shipments\n- Request returns\n\n**Phase 3: Product Help**\n- Product recommendations\n- Size guides\n- Availability checks\n\n**Phase 4: Live Handoff**\n- Escalate to human when needed\n- Collect context before handoff\n\nI'd suggest starting with Phase 1 - it's quick to set up and handles the most common questions. Want me to walk through setting up the shipping FAQ as an example?" },
+      { "role": "user", "content": "Yes please, that would be helpful" },
+      { "role": "bot", "content": "Let's create a shipping FAQ:\n\n**1. Create the intent:**\n- Name: `shipping_info`\n- Examples:\n  - \"How long does shipping take?\"\n  - \"What are the shipping options?\"\n  - \"Do you ship internationally?\"\n  - \"How much is delivery?\"\n  - \"When will my order arrive?\"\n\n**2. Create a Knowledge Base entry:**\n```\nTitle: Shipping Information\n\nDomestic Shipping:\n- Standard (5-7 days): $5.99\n- Express (2-3 days): $12.99\n- Next Day: $24.99\n\nFree shipping on orders over $50!\n\nInternational:\n- We ship to 30+ countries\n- Delivery: 7-14 business days\n- Rates calculated at checkout\n```\n\n**3. Connect them in a workflow:**\nWhen `shipping_info` intent is detected → Query knowledge base → Return answer\n\nThe knowledge base approach is powerful because the bot can answer variations without exact intent matches. Try it in Studio!" },
+      { "role": "user", "content": "This is super clear. I'll start with this and expand from there. Thanks!" }
+    ]
+  },
+  {
+    "id": "conv_016",
+    "channel": "messenger",
+    "tags": { "topic": "actions", "source": "mobile" },
+    "messages": [
+      { "role": "user", "content": "Can I use async/await in Botpress actions?" },
+      { "role": "bot", "content": "Yes, absolutely! All Botpress action handlers are async by default. You can use `async/await` for:\n\n```typescript\nexport const fetchUserData = new Action({\n  name: 'fetchUserData',\n  handler: async ({ input, ctx }) => {\n    // Await API calls\n    const user = await fetch(`https://api.example.com/users/${input.userId}`)\n    const userData = await user.json()\n    \n    // Await database operations\n    await ctx.tables.users.upsert({\n      odId: input.userId,\n      ...userData\n    })\n    \n    // Await multiple operations in parallel\n    const [orders, preferences] = await Promise.all([\n      fetchOrders(input.userId),\n      fetchPreferences(input.userId)\n    ])\n    \n    return { user: userData, orders, preferences }\n  }\n})\n```\n\nJust remember to handle errors with try/catch!" },
+      { "role": "user", "content": "Perfect, exactly what I needed to know" }
+    ]
+  },
+  {
+    "id": "conv_017",
+    "channel": "webchat",
+    "tags": { "topic": "workflows", "source": "website" },
+    "messages": [
+      { "role": "user", "content": "My workflow is stuck in a loop" },
+      { "role": "bot", "content": "Workflow loops usually happen when:\n1. A condition always evaluates the same way\n2. Missing exit conditions\n3. Recursive workflow calls without termination\n\nCan you share your workflow code or describe the logic?" },
+      { "role": "user", "content": "I have a loop that processes items but it never exits" },
+      { "role": "bot", "content": "You need an explicit exit condition. Here's the correct pattern:\n\n```typescript\nhandler: async ({ input, step }) => {\n  const items = input.items\n  let index = input.currentIndex || 0\n  \n  // EXIT CONDITION - must come first!\n  if (index >= items.length) {\n    return { status: 'complete', processed: index }\n  }\n  \n  // Process current item\n  await step('process-item', async () => {\n    await processItem(items[index])\n  })\n  \n  // Continue with next item\n  return {\n    status: 'continue',\n    items,\n    currentIndex: index + 1\n  }\n}\n```\n\n**Key points:**\n1. Check exit condition BEFORE processing\n2. Always increment/update your loop variable\n3. Return different status for 'complete' vs 'continue'\n\nWhat does your current exit condition look like?" },
+      { "role": "user", "content": "I didn't have the exit condition check at the beginning, it was at the end. Moving it fixed the loop issue. Thanks!" }
+    ]
+  },
+  {
+    "id": "conv_018",
+    "channel": "webchat",
+    "tags": { "topic": "tables", "source": "website" },
+    "messages": [
+      { "role": "user", "content": "How do I update existing table records?" },
+      { "role": "bot", "content": "There are several ways to update records:\n\n**1. Update single record by ID:**\n```typescript\nawait ctx.tables.users.update(\n  { id: 'user_123' },  // Filter\n  { status: 'active', lastLogin: new Date() }  // Updates\n)\n```\n\n**2. Upsert (update or insert):**\n```typescript\nawait ctx.tables.users.upsert({\n  odId: 'user_123',  // Unique identifier\n  name: 'John',\n  status: 'active'\n})\n```\nIf record with `odId` exists, it updates. Otherwise, it inserts.\n\n**3. Update multiple records:**\n```typescript\nawait ctx.tables.orders.updateMany(\n  { status: 'pending' },  // Filter - all pending orders\n  { status: 'cancelled' }  // Update\n)\n```\n\nWhich approach fits your use case?" },
+      { "role": "user", "content": "Upsert is exactly what I need - I want to update if exists or create if not. Thanks!" }
+    ]
+  },
+  {
+    "id": "conv_019",
+    "channel": "webchat",
+    "tags": { "topic": "deployment", "source": "website" },
+    "messages": [
+      { "role": "user", "content": "How do I rollback to a previous version?" },
+      { "role": "bot", "content": "Botpress Cloud keeps version history. To rollback:\n\n**Via Dashboard:**\n1. Go to your bot in Botpress Cloud\n2. Click **Deployments** tab\n3. Find the version you want to restore\n4. Click **Deploy This Version**\n\n**Via CLI:**\n```bash\n# List versions\nbp versions list --bot-id your-bot-id\n\n# Deploy specific version\nbp deploy --bot-id your-bot-id --version v1.2.3\n```\n\nVersions are created automatically on each deploy. You can also tag important versions:\n```bash\nbp versions tag --bot-id your-bot-id --version v1.2.3 --tag stable\n```\n\nHow far back do you need to rollback?" },
+      { "role": "user", "content": "Just the last deploy - I introduced a bug" },
+      { "role": "bot", "content": "For rolling back one version:\n\n1. Go to **Deployments** tab\n2. The second entry in the list is your previous version\n3. Click the **...** menu > **Deploy**\n\nThe rollback happens instantly. Your previous version will become the active deployment.\n\nPro tip: After rolling back, you can safely fix the bug locally and redeploy when ready." },
+      { "role": "user", "content": "Rolled back successfully. Crisis averted, thanks!" }
+    ]
+  },
+  {
+    "id": "conv_020",
+    "channel": "webchat",
+    "tags": { "topic": "general", "source": "website" },
+    "messages": [
+      { "role": "user", "content": "What are the API rate limits?" },
+      { "role": "bot", "content": "Botpress API rate limits depend on your plan:\n\n**Free tier:**\n- 100 requests/minute per bot\n- 1,000 requests/day total\n\n**Pro tier:**\n- 1,000 requests/minute per bot\n- Unlimited daily requests\n\n**Enterprise:**\n- Custom limits based on needs\n\n**Specific limits:**\n- Message creation: 60/minute per conversation\n- Table operations: 100/minute per table\n- File uploads: 10/minute\n\nThe API returns `429 Too Many Requests` when limits are exceeded, with a `Retry-After` header.\n\nAre you hitting rate limits? I can suggest optimization strategies." },
+      { "role": "user", "content": "Not yet, just planning ahead. Good to know the limits. Thanks!" }
+    ]
+  },
+  {
+    "id": "conv_021",
+    "channel": "webchat",
+    "tags": { "topic": "actions", "source": "website" },
+    "messages": [
+      { "role": "user", "content": "What's the difference between actions and hooks?" },
+      { "role": "bot", "content": "Good question! They serve different purposes:\n\n**Actions:**\n- Called explicitly from workflows\n- Perform specific tasks (API calls, data processing)\n- Return values to the workflow\n- You control when they run\n\n```typescript\n// Action - called when you decide\nexport const sendEmail = new Action({\n  handler: async ({ input }) => {\n    await emailService.send(input.to, input.subject, input.body)\n    return { sent: true }\n  }\n})\n```\n\n**Hooks:**\n- Run automatically on events\n- Intercept/modify behavior\n- Before/after message, conversation start, etc.\n- System decides when they run\n\n```typescript\n// Hook - runs automatically before each message\nexport const logMessage = new Hook({\n  event: 'before_incoming_message',\n  handler: async ({ message, ctx }) => {\n    await ctx.tables.logs.insert({\n      message: message.text,\n      timestamp: new Date()\n    })\n  }\n})\n```\n\n**When to use which:**\n- Need to do something at a specific workflow step → Action\n- Need to do something for ALL messages/conversations → Hook" },
+      { "role": "user", "content": "Makes sense! So if I want to log all incoming messages, I'd use a hook?" },
+      { "role": "bot", "content": "Exactly! Here's a complete example:\n\n```typescript\nimport { Hook } from '@botpress/sdk'\n\nexport const messageLogger = new Hook({\n  name: 'messageLogger',\n  event: 'before_incoming_message',\n  handler: async ({ message, conversation, ctx }) => {\n    await ctx.tables.messageLogs.insert({\n      conversationId: conversation.id,\n      messageText: message.text,\n      userId: message.userId,\n      timestamp: new Date().toISOString(),\n      channel: conversation.channel\n    })\n    \n    // Return the message unchanged\n    // (you could also modify it here)\n    return { message }\n  }\n})\n```\n\nThis hook runs for every incoming message across all conversations, automatically. No workflow changes needed!" },
+      { "role": "user", "content": "Perfect, I'll implement this for our analytics. Thanks!" }
+    ]
+  },
+  {
+    "id": "conv_022",
+    "channel": "slack",
+    "tags": { "topic": "webhooks", "source": "desktop" },
+    "messages": [
+      { "role": "user", "content": "Can I send data to multiple webhooks?" },
+      { "role": "bot", "content": "Yes! You have a few options:\n\n**1. Multiple webhook configurations:**\nAdd multiple webhooks in Studio, each receives the same events.\n\n**2. Fan-out in an action:**\n```typescript\nexport const notifyWebhooks = new Action({\n  handler: async ({ input }) => {\n    const webhooks = [\n      'https://hook1.example.com/notify',\n      'https://hook2.example.com/notify',\n      'https://hook3.example.com/notify'\n    ]\n    \n    await Promise.all(\n      webhooks.map(url =>\n        fetch(url, {\n          method: 'POST',\n          headers: { 'Content-Type': 'application/json' },\n          body: JSON.stringify(input.payload)\n        })\n      )\n    )\n    \n    return { notified: webhooks.length }\n  }\n})\n```\n\n**3. Use a webhook relay service:**\nServices like Hookdeck or Svix can receive one webhook and fan out to many.\n\nWhat's your use case?" },
+      { "role": "user", "content": "I need to notify both our CRM and analytics platform. The action approach looks clean." },
+      { "role": "bot", "content": "For CRM + analytics, I'd add error handling so one failure doesn't block the other:\n\n```typescript\nexport const notifyServices = new Action({\n  handler: async ({ input }) => {\n    const results = await Promise.allSettled([\n      notifyCRM(input.payload),\n      notifyAnalytics(input.payload)\n    ])\n    \n    return {\n      crm: results[0].status,\n      analytics: results[1].status,\n      errors: results\n        .filter(r => r.status === 'rejected')\n        .map(r => r.reason.message)\n    }\n  }\n})\n```\n\n`Promise.allSettled` ensures both calls complete even if one fails. You can then log or handle partial failures." },
+      { "role": "user", "content": "Smart - I didn't think about partial failures. I'll use allSettled. Thanks!" }
+    ]
+  },
+  {
+    "id": "conv_023",
+    "channel": "webchat",
+    "tags": { "topic": "tables", "source": "website" },
+    "messages": [
+      { "role": "user", "content": "What are the column type options for tables?" },
+      { "role": "bot", "content": "Botpress tables support these column types:\n\n**Basic types:**\n- `string` - Text data\n- `number` - Integers and decimals\n- `boolean` - true/false\n- `date` - ISO date strings\n\n**Complex types:**\n- `object` - JSON objects\n- `array` - JSON arrays\n\n**Example schema:**\n```typescript\nimport { Table } from '@botpress/sdk'\n\nexport const orders = new Table({\n  name: 'orders',\n  columns: {\n    odId: { type: 'string', unique: true },\n    customerId: { type: 'string', index: true },\n    items: { type: 'array' },  // [{sku, qty, price}]\n    total: { type: 'number' },\n    status: { type: 'string', default: 'pending' },\n    isPriority: { type: 'boolean', default: false },\n    metadata: { type: 'object' },\n    createdAt: { type: 'date' }\n  }\n})\n```\n\n**Column options:**\n- `unique` - Enforce uniqueness\n- `index` - Speed up queries on this column\n- `default` - Default value for new rows\n- `nullable` - Allow null values (default: true)" },
+      { "role": "user", "content": "Can I add indexes after the table is created?" },
+      { "role": "bot", "content": "Yes, you can modify indexes by updating your schema and redeploying:\n\n```typescript\n// Before\ncolumns: {\n  customerId: { type: 'string' }  // No index\n}\n\n// After - add index\ncolumns: {\n  customerId: { type: 'string', index: true }  // Now indexed\n}\n```\n\nOn deploy, Botpress will create the index. For large tables, this may take a moment.\n\n**Note:** Adding an index is non-destructive. Removing one is also safe. But changing `unique` constraints requires more care - ensure existing data complies first." },
+      { "role": "user", "content": "Good to know. I'll add indexes for the columns I query frequently. Thanks!" }
+    ]
+  },
+  {
+    "id": "conv_024",
+    "channel": "webchat",
+    "tags": { "topic": "nlu", "source": "mobile" },
+    "messages": [
+      { "role": "user", "content": "Slot filling not working as expected" },
+      { "role": "bot", "content": "Slot filling issues usually stem from:\n1. Entity not being extracted correctly\n2. Slot not mapped to entity\n3. Missing prompts for required slots\n\nCan you describe what's happening? For example:\n- What slots are you trying to fill?\n- What does the user say?\n- What gets extracted (or not)?" },
+      { "role": "user", "content": "I'm trying to fill 'departure_city' and 'arrival_city' for a flight booking. User says 'I want to fly from New York to London' but only departure_city gets filled" },
+      { "role": "bot", "content": "This is likely an entity extraction issue. The NLU might not recognize 'London' as a city in the 'arrival' context.\n\n**Solution 1: Better training examples**\n```\nIntent: book_flight\nExamples:\n- I want to fly from [New York](@departure_city) to [London](@arrival_city)\n- Book a flight [Paris](@departure_city) to [Tokyo](@arrival_city)\n- Flying from [Chicago](@departure_city) arriving in [Miami](@arrival_city)\n- [Seattle](@departure_city) to [Boston](@arrival_city) flight please\n```\n\n**Solution 2: Use positional patterns**\nIf you have a pattern like 'from X to Y', create a composite entity:\n```typescript\nexport const flightRoute = new Entity({\n  name: 'flightRoute',\n  type: 'pattern',\n  pattern: 'from\\\\s+(.+?)\\\\s+to\\\\s+(.+)',\n  groups: ['departure', 'arrival']\n})\n```\n\nTry adding more training examples first - that usually fixes it." },
+      { "role": "user", "content": "Added more examples with both cities annotated and it's working now. I only had a few examples before." },
+      { "role": "bot", "content": "The number of examples makes a big difference for slot filling. Rule of thumb:\n- **10+ examples minimum** per intent with slots\n- **Vary the slot positions** (beginning, middle, end)\n- **Use different slot values** in examples\n\nGlad it's working now!" }
+    ]
+  },
+  {
+    "id": "conv_025",
+    "channel": "webchat",
+    "tags": { "topic": "deployment", "source": "website" },
+    "messages": [
+      { "role": "user", "content": "Environment variables not working in production" },
+      { "role": "bot", "content": "Environment variables need to be set in Botpress Cloud, not just locally. Let's verify:\n\n1. Where did you set the variables?\n2. How are you accessing them in code?\n3. What's the exact error or behavior?" },
+      { "role": "user", "content": "I set them in a .env file and access with process.env.MY_VAR. Works locally but undefined in production" },
+      { "role": "bot", "content": "That's the issue - `.env` files are for local development only and don't get deployed.\n\n**To set production env vars:**\n\n**Option 1: Dashboard**\n1. Go to Botpress Cloud > Your Bot\n2. Click **Configuration** > **Environment Variables**\n3. Add each variable (key + value)\n4. Save and redeploy\n\n**Option 2: CLI**\n```bash\nbp deploy --set-env MY_VAR=production_value --set-env ANOTHER_VAR=value\n```\n\n**Option 3: bp.config.json**\n```json\n{\n  \"env\": {\n    \"MY_VAR\": \"${{ secrets.MY_VAR }}\"\n  }\n}\n```\nThen set the secret in the dashboard.\n\nThe dashboard method is easiest for getting started." },
+      { "role": "user", "content": "Set them via dashboard and redeployed. Working now. I assumed .env would be included in the deploy." },
+      { "role": "bot", "content": "Common misconception! The `.env` file is intentionally excluded because:\n1. It often contains sensitive local credentials\n2. Production should use production-specific values\n3. Security - you don't want secrets in your code repo\n\nPro tip: Add `.env` to your `.gitignore` if it's not already there!" }
+    ]
+  },
+  {
+    "id": "conv_026",
+    "channel": "webchat",
+    "tags": { "topic": "integrations", "source": "website" },
+    "messages": [
+      { "role": "user", "content": "Integration not connecting to Slack" },
+      { "role": "bot", "content": "Let's troubleshoot the Slack integration:\n\n1. **Is the Slack app installed in your workspace?**\n2. **Do you have the correct Bot Token?** (starts with `xoxb-`)\n3. **Are the required OAuth scopes enabled?**\n\nWhat error are you seeing, if any?" },
+      { "role": "user", "content": "No error, just no messages coming through. Bot token looks right." },
+      { "role": "bot", "content": "If the token is correct but no messages arrive, it's usually an event subscription issue:\n\n**Check Slack App Settings:**\n1. Go to api.slack.com/apps > Your App\n2. Click **Event Subscriptions**\n3. Verify 'Enable Events' is ON\n4. Check the Request URL shows 'Verified'\n5. Under 'Subscribe to bot events', ensure these are added:\n   - `message.channels`\n   - `message.groups`\n   - `message.im`\n   - `message.mpim`\n\n**Also check OAuth scopes:**\nUnder OAuth & Permissions, you need:\n- `chat:write`\n- `channels:history`\n- `groups:history`\n- `im:history`\n\nAre all these configured?" },
+      { "role": "user", "content": "Events were enabled but I was missing message.im scope. Added it and reinstalled the app. Messages flowing now!" },
+      { "role": "bot", "content": "Great catch! `message.im` is needed for direct messages to the bot. When you add scopes, reinstalling is required for them to take effect. Glad it's working!" }
+    ]
+  },
+  {
+    "id": "conv_027",
+    "channel": "webchat",
+    "tags": { "topic": "general", "source": "website" },
+    "messages": [
+      { "role": "user", "content": "How do I debug my bot?" },
+      { "role": "bot", "content": "Several debugging approaches:\n\n**1. Console logging:**\n```typescript\nimport { logger } from '@botpress/sdk'\n\nlogger.info('Processing request', { userId, input })\nlogger.debug('Detailed data', { fullPayload })\nlogger.error('Something failed', { error: err.message })\n```\n\n**2. Emulator in Studio:**\n- Test conversations in real-time\n- See NLU results, entity extraction\n- View workflow execution step-by-step\n\n**3. Live logs:**\n```bash\nbp logs --bot-id your-bot --tail --level debug\n```\n\n**4. Breakpoints (local dev):**\nIf running locally with `bp dev`, you can use standard Node.js debugging.\n\n**5. Inspect workflow state:**\n```typescript\nawait step('debug-checkpoint', async () => {\n  logger.info('Current state', {\n    input,\n    variables: ctx.state\n  })\n})\n```\n\nWhat specifically are you trying to debug?" },
+      { "role": "user", "content": "I want to see why a specific workflow path isn't being taken" },
+      { "role": "bot", "content": "For workflow path debugging, add logging at decision points:\n\n```typescript\nhandler: async ({ input, step }) => {\n  logger.info('Workflow started', { input })\n  \n  const condition = evaluateCondition(input)\n  logger.info('Condition evaluated', { \n    condition,\n    willTakePath: condition ? 'A' : 'B'\n  })\n  \n  if (condition) {\n    logger.info('Taking path A')\n    await step('path-a', async () => { ... })\n  } else {\n    logger.info('Taking path B')\n    await step('path-b', async () => { ... })\n  }\n}\n```\n\nThen check logs to see:\n1. What input values arrived\n2. How the condition evaluated\n3. Which path was actually taken\n\nThis usually reveals mismatched expectations quickly." },
+      { "role": "user", "content": "Added the logging and found the issue - my condition was checking the wrong field. Thanks!" }
+    ]
+  },
+  {
+    "id": "conv_028",
+    "channel": "webchat",
+    "tags": { "topic": "workflows", "source": "website" },
+    "messages": [
+      { "role": "user", "content": "Workflow not triggering on user message" },
+      { "role": "bot", "content": "Workflows need to be connected to triggers. Let's check:\n\n1. **Is the workflow set as a trigger handler?**\n2. **What conditions should trigger it?**\n3. **Is another workflow intercepting messages first?**\n\nHow is your workflow supposed to be triggered?" },
+      { "role": "user", "content": "It should trigger when user says something matching the 'get_help' intent" },
+      { "role": "bot", "content": "You need to connect the intent to the workflow via a trigger:\n\n**Option 1: Intent trigger in workflow config**\n```typescript\nexport const helpWorkflow = new Workflow({\n  name: 'helpWorkflow',\n  triggers: [\n    {\n      type: 'intent',\n      intent: 'get_help',\n      conditions: []  // Optional additional conditions\n    }\n  ],\n  handler: async ({ input, step }) => {\n    // Handle help request\n  }\n})\n```\n\n**Option 2: Via bot configuration**\nIn your bot config, map intents to workflows:\n```typescript\nintentHandlers: {\n  'get_help': 'helpWorkflow',\n  'book_appointment': 'bookingWorkflow'\n}\n```\n\n**Option 3: Main workflow routing**\nIn your main/default workflow, route based on intent:\n```typescript\nif (event.nlu.intent.name === 'get_help') {\n  await workflow.start('helpWorkflow', { input })\n}\n```\n\nWhich approach fits your architecture?" },
+      { "role": "user", "content": "I was missing the trigger configuration. Added it and now the workflow fires correctly. Thanks!" }
+    ]
+  },
+  {
+    "id": "conv_029",
+    "channel": "webchat",
+    "tags": { "topic": "tables", "source": "website" },
+    "messages": [
+      { "role": "user", "content": "Table performance is slow with large data" },
+      { "role": "bot", "content": "Table performance can be optimized several ways:\n\n**1. Add indexes to frequently queried columns:**\n```typescript\ncolumns: {\n  odId: { type: 'string', unique: true },\n  status: { type: 'string', index: true },  // Add index\n  createdAt: { type: 'date', index: true }  // Add index\n}\n```\n\n**2. Limit query results:**\n```typescript\n// Bad - fetches everything\nconst all = await ctx.tables.orders.find({ status: 'pending' })\n\n// Good - paginate\nconst page = await ctx.tables.orders.find(\n  { status: 'pending' },\n  { limit: 50, offset: 0 }\n)\n```\n\n**3. Select only needed fields:**\n```typescript\nconst orders = await ctx.tables.orders.find(\n  { status: 'pending' },\n  { select: ['id', 'total', 'createdAt'] }  // Don't fetch large fields\n)\n```\n\nHow large is your table and what query is slow?" },
+      { "role": "user", "content": "About 50,000 records. The slow query is finding orders by customer email" },
+      { "role": "bot", "content": "50K records needs indexing on the email column:\n\n```typescript\ncolumns: {\n  // ... other columns\n  customerEmail: { type: 'string', index: true }  // ADD THIS INDEX\n}\n```\n\nAfter adding the index and redeploying, your query:\n```typescript\nconst orders = await ctx.tables.orders.find({ \n  customerEmail: 'user@example.com' \n})\n```\n\nWill use the index and be much faster (O(log n) vs O(n)).\n\n**For even better performance** with 50K+ records:\n```typescript\n// Add compound index if you often filter by email AND status\nconst orders = await ctx.tables.orders.find({\n  customerEmail: email,\n  status: 'active'\n}, {\n  limit: 100,  // Always limit\n  sort: { createdAt: -1 }  // Newest first\n})\n```" },
+      { "role": "user", "content": "Added the index on customerEmail. Query went from 3 seconds to under 100ms. Huge difference!" }
+    ]
+  },
+  {
+    "id": "conv_030",
+    "channel": "webchat",
+    "tags": { "topic": "nlu", "source": "website" },
+    "messages": [
+      { "role": "user", "content": "How do I handle multiple languages?" },
+      { "role": "bot", "content": "Botpress supports multilingual bots. Here's how to set it up:\n\n**1. Enable languages in bot config:**\n```typescript\n// bot.config.ts\nexport default {\n  languages: ['en', 'es', 'fr'],  // English, Spanish, French\n  defaultLanguage: 'en'\n}\n```\n\n**2. Add translations for intents:**\nIn Studio, each intent can have examples in multiple languages:\n```\nIntent: greeting\n\n[en]\n- Hello\n- Hi there\n- Good morning\n\n[es]\n- Hola\n- Buenos días\n- Qué tal\n\n[fr]\n- Bonjour\n- Salut\n- Bonsoir\n```\n\n**3. Language detection:**\nBotpress auto-detects language from user messages, or you can set it explicitly:\n```typescript\nctx.conversation.language = 'es'  // Force Spanish\n```\n\nWould you like details on content translation or NLU training for specific languages?" },
+      { "role": "user", "content": "How do I translate bot responses?" },
+      { "role": "bot", "content": "For response translations, use the translation system:\n\n**1. Create translation files:**\n```\n// translations/en.json\n{\n  \"welcome\": \"Welcome! How can I help you?\",\n  \"goodbye\": \"Thanks for chatting. Goodbye!\",\n  \"error\": \"Sorry, something went wrong.\"\n}\n\n// translations/es.json\n{\n  \"welcome\": \"¡Bienvenido! ¿Cómo puedo ayudarte?\",\n  \"goodbye\": \"Gracias por chatear. ¡Adiós!\",\n  \"error\": \"Lo siento, algo salió mal.\"\n}\n```\n\n**2. Use translations in code:**\n```typescript\nimport { t } from '@botpress/sdk'\n\nhandler: async ({ ctx }) => {\n  // Automatically uses conversation language\n  const message = t('welcome')\n  \n  // Or with variables\n  const personalized = t('greeting_name', { name: userName })\n  // \"Hello {{name}}!\" → \"Hello John!\"\n}\n```\n\n**3. Dynamic content:**\nFor content that changes (like product names), store translations in a table:\n```typescript\nconst product = await ctx.tables.products.findOne({ id: productId })\nconst name = product.translations[ctx.conversation.language] || product.name\n```" },
+      { "role": "user", "content": "This is comprehensive, thanks! I'll start with en and es." }
+    ]
+  }
+]

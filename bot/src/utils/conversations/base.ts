@@ -1,5 +1,13 @@
 import { getTargetBotClient } from "../target-client";
 import { RateLimiterMemory } from "rate-limiter-flexible";
+import {
+  useFakeData,
+  getFakeConversations,
+  paginateFakeConversations,
+  getFakeMessages,
+  paginateFakeMessages,
+  getFakeConversationById,
+} from "./fake-data";
 
 // ============================================================================
 // Configuration
@@ -58,6 +66,17 @@ export type ConversationWithMessages = {
 // ============================================================================
 
 export const fetchConversations = async (nextToken?: string) => {
+  // Use fake data if toggle is enabled
+  if (useFakeData()) {
+    const allConversations = getFakeConversations().map((c) => c.conversation);
+    const result = paginateFakeConversations(allConversations, nextToken);
+    return {
+      conversations: result.conversations,
+      nextToken: result.nextToken,
+      hasMore: !!result.nextToken,
+    };
+  }
+
   await rateLimiter.consume("conversations", 1);
 
   const client = getTargetBotClient();
@@ -75,6 +94,15 @@ export const fetchConversations = async (nextToken?: string) => {
 };
 
 export const fetchConversationById = async (conversationId: string) => {
+  // Use fake data if toggle is enabled
+  if (useFakeData()) {
+    const fake = getFakeConversationById(conversationId);
+    if (!fake) {
+      throw new Error(`Conversation not found: ${conversationId}`);
+    }
+    return fake.conversation;
+  }
+
   await rateLimiter.consume("conversation-by-id", 1);
 
   const client = getTargetBotClient();
@@ -84,6 +112,17 @@ export const fetchConversationById = async (conversationId: string) => {
 };
 
 export const fetchMessages = async (conversationId: string, nextToken?: string) => {
+  // Use fake data if toggle is enabled
+  if (useFakeData()) {
+    const messages = getFakeMessages(conversationId);
+    const result = paginateFakeMessages(messages, nextToken);
+    return {
+      messages: result.messages,
+      nextToken: result.nextToken,
+      hasMore: !!result.nextToken,
+    };
+  }
+
   await rateLimiter.consume(conversationId, 1);
 
   const client = getTargetBotClient();
