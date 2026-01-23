@@ -130,7 +130,18 @@ const formatMessageContent = (message: Message): string[] => {
       return ["[Location]"];
     
     case "custom":
-      return [`[Custom message: ${payload?.name || "unknown"}]`];
+      // Filter out status indicator messages (Thinking..., Searching..., etc.)
+      // These are loading states, not actual conversation content
+      const customName = payload?.name || "";
+      if (
+        customName.includes("Thinking") ||
+        customName.includes("Searching") ||
+        customName.includes("Reading") ||
+        customName.includes("Loading")
+      ) {
+        return []; // Skip status indicators
+      }
+      return [`[Custom message: ${customName || "unknown"}]`];
     
     default:
       // Fallback for unknown types

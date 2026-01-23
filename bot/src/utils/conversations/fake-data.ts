@@ -215,5 +215,5 @@ export function paginateFakeMessages(
 // ============================================================================
 
 export function useFakeData(): boolean {
-  return true;
+  return process.env.USE_FAKE_DATA === "true";
 }

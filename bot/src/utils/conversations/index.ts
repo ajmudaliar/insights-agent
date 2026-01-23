@@ -1,3 +1,6 @@
+// Base types
+export type { Conversation, Message, ConversationWithMessages, FetchConversationsOptions } from "./base";
+
 // Stratified sampling
 export type { StratificationOptions, StratificationResult } from "./stratified-sampling";
 export { stratifiedSampleConversations } from "./stratified-sampling";

@@ -11,7 +11,6 @@ export type StratificationResult = {
   conversations: ConversationWithMessages[];
   stratification: {
     total_fetched: number;
-    skipped_empty: number;
     skipped_failed: number;
     total_sampled: number;
     buckets: Record<string, [number, number]>; // { bucket_name: [available, sampled] }
@@ -90,20 +89,15 @@ export async function stratifiedSampleConversations(
 ): Promise<StratificationResult> {
   const { oversampleMultiplier = 3 } = options;
 
-  // Phase 1: Fetch oversampled conversations
+  // Phase 1: Fetch oversampled conversations (with hasMessages filter to skip empty ones)
   const oversampleSize = Math.min(targetSampleSize * oversampleMultiplier, 1000);
-  const conversations = await fetchLastNConversations(oversampleSize);
+  const conversations = await fetchLastNConversations(oversampleSize, { hasMessages: true });
   const allConversations: ConversationWithMessages[] = [];
-  let skippedEmpty = 0;
   let skippedFailed = 0;
 
   for (const conversation of conversations) {
     try {
       const messages = await fetchLastNMessages(conversation.id, maxMessagesPerConversation);
-      if (messages.length === 0) {
-        skippedEmpty++;
-        continue;
-      }
       allConversations.push({ conversation, messages });
     } catch {
       skippedFailed++;
@@ -117,7 +111,6 @@ export async function stratifiedSampleConversations(
       conversations: allConversations,
       stratification: {
         total_fetched: conversations.length,
-        skipped_empty: skippedEmpty,
         skipped_failed: skippedFailed,
         total_sampled: allConversations.length,
         buckets: Object.fromEntries(
@@ -189,7 +182,6 @@ export async function stratifiedSampleConversations(
     conversations: finalSample,
     stratification: {
       total_fetched: conversations.length,
-      skipped_empty: skippedEmpty,
       skipped_failed: skippedFailed,
       total_sampled: finalSample.length,
       buckets: bucketStats,

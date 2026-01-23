@@ -12,6 +12,7 @@
   "dependencies": {
     "@botpress/client": "^1.0.0",
     "@botpress/sdk": "^4.18.1",
+    "@botpress/runtime": "^1.13.15",
     "dotenv": "^17.2.3",
     "openai": "^6.9.0",
     "rate-limiter-flexible": "^8.2.0"

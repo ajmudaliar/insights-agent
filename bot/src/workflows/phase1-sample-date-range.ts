@@ -17,7 +17,6 @@ export const SampleDateRange = new Workflow({
   output: z.object({
     stats: z.object({
       total_fetched: z.number(),
-      skipped_empty: z.number(),
       skipped_failed: z.number(),
       total_sampled: z.number(),
     }),
@@ -35,7 +34,6 @@ export const SampleDateRange = new Workflow({
     return {
       stats: {
         total_fetched: result.stats.total_fetched,
-        skipped_empty: result.stats.skipped_empty,
         skipped_failed: result.stats.skipped_failed,
         total_sampled: result.stats.total_included,
       },

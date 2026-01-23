@@ -10,7 +10,6 @@ export type DateRangeResult = {
   conversations: ConversationWithMessages[];
   stats: {
     total_fetched: number;
-    skipped_empty: number;
     skipped_failed: number;
     total_included: number;
   };
@@ -18,7 +17,7 @@ export type DateRangeResult = {
 
 /**
  * Fetch all conversations within a date range.
- * Filters by updatedAt, excludes empty conversations.
+ * Uses API-level filtering by date and hasMessages tag.
  */
 export async function fetchConversationsInDateRange(
   startDate: Date,
@@ -29,35 +28,22 @@ export async function fetchConversationsInDateRange(
 
   const allConversations: ConversationWithMessages[] = [];
   let totalFetched = 0;
-  let skippedEmpty = 0;
   let skippedFailed = 0;
   let nextToken: string | undefined;
-  let reachedBeforeStart = false;
 
-  // Fetch conversations (sorted by updatedAt desc) until we pass the start date
-  while (!reachedBeforeStart) {
-    const result = await fetchConversations(nextToken);
+  // Fetch conversations with API-level date and hasMessages filtering
+  while (true) {
+    const result = await fetchConversations({
+      nextToken,
+      afterDate: startDate,
+      beforeDate: endDate,
+      hasMessages: true,
+    });
     totalFetched += result.conversations.length;
 
     for (const conversation of result.conversations) {
-      const convDate = new Date(conversation.updatedAt);
-
-      // Skip if after end date
-      if (convDate > endDate) continue;
-
-      // Stop if before start date (conversations are sorted desc)
-      if (convDate < startDate) {
-        reachedBeforeStart = true;
-        break;
-      }
-
-      // In range - fetch messages
       try {
         const messages = await fetchLastNMessages(conversation.id, maxMessagesPerConversation);
-        if (messages.length === 0) {
-          skippedEmpty++;
-          continue;
-        }
         allConversations.push({ conversation, messages });
       } catch {
         skippedFailed++;
@@ -72,7 +58,6 @@ export async function fetchConversationsInDateRange(
     conversations: allConversations,
     stats: {
       total_fetched: totalFetched,
-      skipped_empty: skippedEmpty,
       skipped_failed: skippedFailed,
       total_included: allConversations.length,
     },

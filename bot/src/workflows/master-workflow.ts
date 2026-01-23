@@ -26,7 +26,6 @@ export const MasterWorkflow = new Workflow({
     sampling: z.object({
       mode: z.enum(["stratified", "date_range"]),
       total_fetched: z.number(),
-      skipped_empty: z.number(),
       skipped_failed: z.number(),
       total_sampled: z.number(),
     }),
@@ -74,7 +73,6 @@ export const MasterWorkflow = new Workflow({
     let samplingStats: {
       mode: "stratified" | "date_range";
       total_fetched: number;
-      skipped_empty: number;
       skipped_failed: number;
       total_sampled: number;
     };
@@ -100,7 +98,6 @@ export const MasterWorkflow = new Workflow({
       samplingStats = {
         mode: "date_range",
         total_fetched: result.stats.total_fetched,
-        skipped_empty: result.stats.skipped_empty,
         skipped_failed: result.stats.skipped_failed,
         total_sampled: result.stats.total_sampled,
       };
@@ -121,7 +118,6 @@ export const MasterWorkflow = new Workflow({
       samplingStats = {
         mode: "stratified",
         total_fetched: result.stats.total_fetched,
-        skipped_empty: result.stats.skipped_empty,
         skipped_failed: result.stats.skipped_failed,
         total_sampled: result.stats.total_sampled,
       };

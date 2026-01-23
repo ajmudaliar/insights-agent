@@ -1,16 +1,22 @@
-import type { Message, Conversation, ConversationWithMessages } from "./base";
+import type { Message, Conversation, ConversationWithMessages, FetchConversationsOptions } from "./base";
 import { fetchConversations, fetchMessages } from "./base";
 
 // ============================================================================
 // Recursive Fetch Functions
 // ============================================================================
 
+export type FetchLastNConversationsOptions = Omit<FetchConversationsOptions, "nextToken">;
+
 /**
  * Recursively fetches the last N conversations
  * @param n - The total number of conversations to fetch
+ * @param options - Optional filters (hasMessages, afterDate, beforeDate)
  * @returns Array of conversations (newest first)
  */
-export const fetchLastNConversations = async (n: number): Promise<Conversation[]> => {
+export const fetchLastNConversations = async (
+  n: number,
+  options: FetchLastNConversationsOptions = {}
+): Promise<Conversation[]> => {
   const conversations: any[] = [];
   let nextToken: string | undefined = undefined;
 
@@ -21,7 +27,7 @@ export const fetchLastNConversations = async (n: number): Promise<Conversation[]
     }
 
     // Fetch the next batch of conversations (rate-limited in base.ts)
-    const result = await fetchConversations(nextToken);
+    const result = await fetchConversations({ ...options, nextToken });
     conversations.push(...result.conversations);
 
     // Base case: no more conversations available

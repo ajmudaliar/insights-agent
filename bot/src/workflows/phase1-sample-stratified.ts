@@ -17,7 +17,6 @@ export const SampleStratified = new Workflow({
   output: z.object({
     stats: z.object({
       total_fetched: z.number(),
-      skipped_empty: z.number(),
       skipped_failed: z.number(),
       total_sampled: z.number(),
       buckets: z.record(z.tuple([z.number(), z.number()])),
@@ -36,7 +35,6 @@ export const SampleStratified = new Workflow({
     return {
       stats: {
         total_fetched: result.stratification.total_fetched,
-        skipped_empty: result.stratification.skipped_empty,
         skipped_failed: result.stratification.skipped_failed,
         total_sampled: result.stratification.total_sampled,
         buckets: result.stratification.buckets,

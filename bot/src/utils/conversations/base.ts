@@ -65,10 +65,28 @@ export type ConversationWithMessages = {
 // Base Fetch Functions
 // ============================================================================
 
-export const fetchConversations = async (nextToken?: string) => {
+export type FetchConversationsOptions = {
+  nextToken?: string;
+  afterDate?: Date;
+  beforeDate?: Date;
+  hasMessages?: boolean;
+};
+
+export const fetchConversations = async (options: FetchConversationsOptions = {}) => {
+  const { nextToken, afterDate, beforeDate, hasMessages } = options;
+
   // Use fake data if toggle is enabled
   if (useFakeData()) {
-    const allConversations = getFakeConversations().map((c) => c.conversation);
+    let allConversations = getFakeConversations().map((c) => c.conversation);
+
+    // Apply date filters for fake data
+    if (afterDate) {
+      allConversations = allConversations.filter((c) => new Date(c.updatedAt) >= afterDate);
+    }
+    if (beforeDate) {
+      allConversations = allConversations.filter((c) => new Date(c.updatedAt) <= beforeDate);
+    }
+
     const result = paginateFakeConversations(allConversations, nextToken);
     return {
       conversations: result.conversations,
@@ -80,11 +98,20 @@ export const fetchConversations = async (nextToken?: string) => {
   await rateLimiter.consume("conversations", 1);
 
   const client = getTargetBotClient();
+
+  // Build tags filter
+  const tags: Record<string, string> | undefined = hasMessages ? { hasMessages: "true" } : undefined;
+
+  // Note: afterDate/beforeDate are supported by the API but not yet in SDK types
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const result = await client.listConversations({
     nextToken: nextToken,
     sortField: "updatedAt",
     sortDirection: "desc",
-  });
+    afterDate: afterDate?.toISOString(),
+    beforeDate: beforeDate?.toISOString(),
+    tags,
+  } as any);
 
   return {
     conversations: result.conversations,
