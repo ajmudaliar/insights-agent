@@ -24,32 +24,12 @@ The system operates through a sophisticated **multi-phase pipeline** that transf
 
 ```mermaid
 flowchart LR
-    subgraph Phase0[Phase 0]
-        P0[Config Translation]
-        P0T[NL → JSON]
-    end
-
-    subgraph Phase1[Phase 1]
-        P1[Sample Conversations]
-        P1T[Stratified Weighting]
-    end
-
-    subgraph Phase2[Phase 2]
-        P2[Extract Features]
-        P2T[10 Parallel LLM Calls]
-    end
-
-    subgraph Phase3a[Phase 3a]
-        P3A[Discover Categories]
-        P3AT[Pattern Recognition]
-    end
-
-    subgraph Phase3b[Phase 3b]
-        P3B[Assign Hierarchies]
-        P3BT[Confidence + Reasoning]
-    end
-
-    Phase0 --> Phase1 --> Phase2 --> Phase3a --> Phase3b
+    NL[Natural Language<br/>Prompts]
+    --> P0[Config Translation<br/>LLM converts to<br/>extraction schema]
+    --> P1[Stratified Sampling<br/>Weight by conversation<br/>length & informativeness]
+    --> P2[Feature Extraction<br/>Parallel LLM extracts<br/>intents, topics, outcomes]
+    --> P3[Categorization<br/>Discover categories →<br/>Assign with confidence]
+    --> Results[Hierarchical Insights<br/>with Reasoning]
 ```
 
 ### Phase 0: Natural Language → Structured Config
