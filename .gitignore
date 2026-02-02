@@ -1,0 +1,23 @@
+# Environment files
+.env
+*.env.local
+frontend/.env
+bot/.env
+
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+.next/
+
+# OS files
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+
+# Botpress
+.botpress/
