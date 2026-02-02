@@ -23,13 +23,29 @@ Traditional approaches require manually reading transcripts, building keyword ru
 The system operates through a sophisticated **multi-phase pipeline** that transforms raw conversations into structured, hierarchical insights:
 
 ```mermaid
-flowchart LR
-    NL[Natural Language<br/>Prompts]
-    --> P0[Config Translation<br/>LLM converts to<br/>extraction schema]
-    --> P1[Stratified Sampling<br/>Weight by conversation<br/>length & informativeness]
-    --> P2[Feature Extraction<br/>Parallel LLM extracts<br/>intents, topics, outcomes]
-    --> P3[Categorization<br/>Discover categories →<br/>Assign with confidence]
-    --> Results[Hierarchical Insights<br/>with Reasoning]
+flowchart TB
+    subgraph Input[" "]
+        NL[/"Natural Language Prompts<br/>Agent description, analytical question,<br/>domain context, categorization guidance"/]
+    end
+
+    subgraph Pipeline["Processing Pipeline"]
+        P0["⚙️ <b>Config Translation</b><br/>LLM converts natural language<br/>into structured extraction schema"]
+        P1["📊 <b>Stratified Sampling</b><br/>Bucket by message count, weight by<br/>informativeness, proportional selection"]
+        P2["🔍 <b>Feature Extraction</b><br/>Parallel LLM extracts intents, topics,<br/>outcomes → generates semantic strings"]
+        P3a["🗂️ <b>Category Discovery</b><br/>LLM analyzes all semantic strings<br/>to find natural patterns"]
+        P3b["✅ <b>Hierarchical Assignment</b><br/>Assign conversations to categories<br/>and subcategories with confidence"]
+    end
+
+    subgraph Output[" "]
+        Results[/"Hierarchical Insights<br/>Categories → Subcategories<br/>Confidence scores + LLM reasoning"/]
+    end
+
+    NL --> P0
+    P0 -->|Structured Config| P1
+    P1 -->|Sampled Conversations| P2
+    P2 -->|Semantic Strings| P3a
+    P3a -->|Discovered Taxonomy| P3b
+    P3b --> Results
 ```
 
 ### Phase 0: Natural Language → Structured Config
