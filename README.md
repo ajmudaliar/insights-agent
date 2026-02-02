@@ -22,68 +22,134 @@ Traditional approaches require manually reading transcripts, building keyword ru
 
 The system operates through a sophisticated **multi-phase pipeline** that transforms raw conversations into structured, hierarchical insights:
 
-```
-┌──────────────┐    ┌──────────────┐    ┌──────────────┐    ┌──────────────┐    ┌──────────────┐
-│    Phase 0   │    │   Phase 1    │    │   Phase 2    │    │   Phase 3a   │    │   Phase 3b   │
-│    Config    │ →  │   Sample     │ →  │   Extract    │ →  │   Discover   │ →  │    Assign    │
-│  Translation │    │ Conversations│    │   Features   │    │  Categories  │    │ Hierarchies  │
-└──────────────┘    └──────────────┘    └──────────────┘    └──────────────┘    └──────────────┘
-      NL→JSON          Stratified         10 parallel         Pattern           Confidence +
-                       weighting          LLM calls           recognition       reasoning
+```mermaid
+flowchart LR
+    subgraph Phase0[Phase 0]
+        P0[Config Translation]
+        P0T[NL → JSON]
+    end
+
+    subgraph Phase1[Phase 1]
+        P1[Sample Conversations]
+        P1T[Stratified Weighting]
+    end
+
+    subgraph Phase2[Phase 2]
+        P2[Extract Features]
+        P2T[10 Parallel LLM Calls]
+    end
+
+    subgraph Phase3a[Phase 3a]
+        P3A[Discover Categories]
+        P3AT[Pattern Recognition]
+    end
+
+    subgraph Phase3b[Phase 3b]
+        P3B[Assign Hierarchies]
+        P3BT[Confidence + Reasoning]
+    end
+
+    Phase0 --> Phase1 --> Phase2 --> Phase3a --> Phase3b
 ```
 
 ### Phase 0: Natural Language → Structured Config
 
-Describe your analysis in plain English:
-- *"I have a documentation bot for a developer platform"*
-- *"I want to know what topics users struggle with most"*
+Describe your analysis in plain English. The LLM translates this into a structured extraction schema.
 
-The LLM translates this into a structured extraction schema: which features to look for, what attributes to track, and how to focus the categorization.
+<p align="center">
+  <img src="./assets/config-basic-info.png" width="700" />
+</p>
+
+Configure exactly what to extract and how to categorize:
+
+| Tab | Purpose |
+|-----|---------|
+| **Basic Info** | Analytical question, agent description, clustering focus |
+| **Features** | What signals to extract (product mentions, error types, etc.) |
+| **Attributes** | Custom dimensions (categorical, boolean, numerical) |
+| **Workflow** | Sampling mode, sample size, category limits |
+| **Advanced** | Domain context, categorization guidance |
+
+<p align="center">
+  <img src="./assets/config-features.png" width="600" />
+  <br/>
+  <img src="./assets/config-attributes.png" width="400" />
+  <img src="./assets/config-workflow.png" width="400" />
+</p>
 
 ### Phase 1: Intelligent Sampling
 
-Not all conversations are equally informative. The stratified sampler:
+Not all conversations are equally informative. The stratified sampler prevents bias toward short, uninformative exchanges:
 
-1. **Oversamples** conversations (5× the target)
-2. **Buckets by length**: single-turn, short (2-5), medium (6-10), long (11+)
-3. **Applies weights**: longer conversations get 2× weight, single-turn gets 0.5×
-4. **Samples proportionally** from each bucket
-
-This prevents the analysis from being dominated by "hi/bye" conversations while ensuring diverse coverage.
+```mermaid
+flowchart TD
+    A[Fetch 5× target conversations] --> B[Bucket by message count]
+    B --> C1[Single-turn: 0.5× weight]
+    B --> C2[Short 2-5: 1.0× weight]
+    B --> C3[Medium 6-10: 1.5× weight]
+    B --> C4[Long 11+: 2.0× weight]
+    C1 --> D[Proportional sampling]
+    C2 --> D
+    C3 --> D
+    C4 --> D
+    D --> E[Diverse, informative sample]
+```
 
 ### Phase 2: Parallel Feature Extraction
 
-For each conversation, the LLM extracts:
+For each conversation, the LLM extracts structured features—running **10 concurrent extractions** for throughput:
+
 - **Primary user intent** - What was the user trying to accomplish?
 - **Specific features** - Product mentions, error types, sentiment signals
 - **Conversation outcome** - Satisfied, unsatisfied, or unclear
 - **Key topics** - What subjects were discussed?
 - **Custom attributes** - Domain-specific dimensions you define
 
-Runs **10 concurrent extractions** for throughput. Each conversation gets a **semantic string**—a structured summary optimized for pattern matching:
+Each conversation gets a **semantic string**—a compressed representation optimized for pattern discovery:
 
 ```
 Intent: [configure webhooks] | Features: {errors: [timeout], products: [API]} | Topics: [integration, debugging] | Outcome: unsatisfied
 ```
 
+<p align="center">
+  <img src="./assets/config-detail.png" width="700" />
+</p>
+
 ### Phase 3: Hierarchical Categorization
 
 This is where it gets interesting. The LLM analyzes all semantic strings to **discover natural categories**—not predefined buckets, but patterns that actually exist in your data.
+
+```mermaid
+flowchart TD
+    subgraph Discovery
+        A[All Semantic Strings] --> B[LLM Pattern Analysis]
+        B --> C[2-10 Top-Level Categories]
+        C --> D[Per-Category: 2-5 Subcategories]
+    end
+
+    subgraph Assignment
+        E[Each Conversation] --> F[Compare to Categories]
+        F --> G[Best Match + Confidence 0-1]
+        G --> H[LLM Reasoning Explanation]
+    end
+
+    Discovery --> Assignment
+```
 
 <img src="./assets/subcategory-detail.png" width="400" align="right" />
 
 **Category Discovery:**
 - Analyzes patterns across all conversations
 - Generates 2-10 top-level categories
-- Each category includes a name (2-4 words) and summary explaining what it represents
+- Each category includes a name (2-4 words) and summary
 
 **Subcategory Discovery:**
 - For each category with sufficient conversations
 - Discovers more specific patterns within
-- Creates a two-level hierarchy for drill-down analysis
+- Creates a two-level hierarchy for drill-down
 
 **Assignment with Confidence:**
-- Every conversation is assigned with a **confidence score** (0-1)
+- Every conversation assigned with a **confidence score** (0-1)
 - LLM provides **reasoning** for each assignment
 - Enables filtering low-confidence assignments for review
 
@@ -98,35 +164,33 @@ Explore your insights through an interactive hierarchy:
 - **Drill-down to subcategories** for granular patterns
 - **Full conversation view** with extracted features and LLM reasoning
 
-<img src="./assets/conversation-detail.png" width="350" />
+<p align="center">
+  <img src="./assets/conversation-detail.png" width="400" />
+</p>
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         React Dashboard                         │
-│            (Radix UI + Tailwind CSS v4 + React 19)              │
-└────────────────────────────────┬────────────────────────────────┘
-                                 │ Botpress Client SDK
-                                 ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    Insights Agent (Botpress ADK)                │
-│  ┌─────────────────────────────────────────────────────────┐    │
-│  │                    Workflow Engine                       │    │
-│  │  master_workflow → phase orchestration (4hr timeout)     │    │
-│  └─────────────────────────────────────────────────────────┘    │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────────────┐    │
-│  │  Tables  │ │ Sampling │ │ Feature  │ │  Categorization  │    │
-│  │  (5 schemas)│ │  Utils   │ │Extraction│ │   (parallel)     │    │
-│  └──────────┘ └──────────┘ └──────────┘ └──────────────────┘    │
-└────────────────────────────────┬────────────────────────────────┘
-                                 │
-                    ┌────────────┴────────────┐
-                    ▼                         ▼
-            ┌──────────────┐          ┌──────────────┐
-            │  Target Bot  │          │  Claude LLM  │
-            │ Conversations│          │   Analysis   │
-            └──────────────┘          └──────────────┘
+```mermaid
+flowchart TB
+    subgraph Frontend[React Dashboard]
+        UI[Radix UI + Tailwind CSS v4]
+        Pages[Dashboard / Insight Detail / Conversation View]
+    end
+
+    subgraph Backend[Insights Agent - Botpress ADK]
+        Workflows[Workflow Engine<br/>master_workflow • 4hr timeout]
+        Tables[(5 Table Schemas)]
+        Utils[Sampling • Transcripts • API Client]
+    end
+
+    subgraph External[External Services]
+        Target[Target Bot<br/>Conversations]
+        LLM[Claude LLM<br/>Analysis]
+    end
+
+    Frontend <-->|Botpress Client SDK| Backend
+    Backend <--> Target
+    Backend <--> LLM
 ```
 
 ### Tech Stack
@@ -229,9 +293,10 @@ pnpm dev              # http://localhost:5173
 ## Usage
 
 1. **Create an Insight** - Describe your bot and what you want to learn
-2. **Run Analysis** - The pipeline samples, extracts, discovers, and assigns
-3. **Explore Results** - Navigate the category hierarchy, drill into conversations
-4. **Iterate** - Adjust domain context or guidance, re-run for refined insights
+2. **Configure Extraction** - Define features, attributes, and workflow parameters
+3. **Run Analysis** - The pipeline samples, extracts, discovers, and assigns
+4. **Explore Results** - Navigate the category hierarchy, drill into conversations
+5. **Iterate** - Adjust domain context or guidance, re-run for refined insights
 
 ---
 
